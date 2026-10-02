@@ -1,0 +1,504 @@
+// SPDX-License-Identifier: MIT
+// Compact FungibleToken v3 (native) - multisig-governed NATIVE unshielded token on Midnight
+//
+// Design (replaces the v2.6 internal balance/allowance ledger):
+//   * The token is a native Midnight unshielded token. Its color is
+//     tokenType(pad(32,"fungible-token:native"), kernel.self()).
+//   * Wallets (Lace / 1AM) hold and transfer it themselves: wallet -> wallet transfers need NO contract circuit.
+//   * The contract governs ISSUANCE and its OWN holdings:
+//       mint              (2-of-3 multisig)  mint to a wallet (UserAddress)
+//       burn              (2-of-3 multisig)  destroy tokens HELD BY THE CONTRACT
+//       deposit           (anyone)           treasury/wallet -> contract-held balance
+//       contractWithdraw  (2-of-3 multisig)  contract-held balance -> a wallet
+//       emergencyWithdraw (owner, paused)    contract-held balance -> fixed treasury wallet
+//       setEmergencyPauser / rotateSigner    unchanged governance from v2.6
+//       pause / unpause                      owner or emergency pauser
+//   * pause gates only contract-mediated actions (mint, deposit, contractWithdraw, burn). It CANNOT stop native
+//     wallet-to-wallet transfers: the contract is not in that path.
+//   * Unused multisig slots are the identity point (0,1) (a valid subgroup point). v2.6 used (0,0), which the real
+//     prover rejects ("Point should be part of the subgroup"), forcing all 3 signatures.
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+// ============ Schnorr Signature Verification on Jubjub Curve ============
+export struct SchnorrSignature {
+  announcement: JubjubPoint,
+  response: Field
+}
+
+struct SchnorrHashInput<#n> {
+  ann_x: Field,
+  ann_y: Field,
+  pk_x: Field,
+  pk_y: Field,
+  msg: Vector<n, Field>
+}
+
+// Witness providing quotient and remainder for dividing challenge hash by 2^248
+witness getSchnorrReduction(challengeHash: Field): [Field, Uint<248>];
+
+/**
+ * Verifies a Schnorr signature over Jubjub curve with challenge truncated to 248 bits.
+ * `response` and the truncated challenge `c` are converted from `Field` to `JubjubScalar`
+ * via an explicit `as JubjubScalar` cast before scalar multiplication (required since
+ * compactc 0.19 / toolchain 0.34, which made JubjubScalar a distinct type from Field).
+ * This is a safe no-op here: `c` is already < 2^248 (well under the Jubjub scalar
+ * order, by construction of the reduction above), and `response` must already be
+ * < the Jubjub scalar order for a validly-constructed signature to verify at all.
+ */
+circuit schnorrVerify<#n>(
+  msg: Vector<n, Field>,
+  signature: SchnorrSignature,
+  pk: JubjubPoint
+): [] {
+  const {announcement, response} = signature;
+  const cFull: Field = transientHash<SchnorrHashInput<n>>(
+    SchnorrHashInput<n> {
+      ann_x: jubjubPointX(announcement),
+      ann_y: jubjubPointY(announcement),
+      pk_x: jubjubPointX(pk),
+      pk_y: jubjubPointY(pk),
+      msg: msg
+    }
+  );
+  const TWO_248: Field = 452312848583266388373324160190187140051835877600158453279131187530910662656 as Field;
+  const [q, cTruncated] = getSchnorrReduction(cFull);
+  assert(disclose(q) * TWO_248 + (disclose(cTruncated) as Field) == cFull, "FungibleToken: invalid challenge reduction");
+  const c: Field = disclose(cTruncated) as Field;
+  const lhs: JubjubPoint = ecMulGenerator(response as JubjubScalar);
+  const rhs: JubjubPoint = ecAdd(announcement, ecMul(pk, c as JubjubScalar));
+  assert(jubjubPointX(lhs) == jubjubPointX(rhs) && jubjubPointY(lhs) == jubjubPointY(rhs), "FungibleToken: invalid signature");
+}
+
+// ============ Ledger State ============
+export ledger _totalSupply: Uint<128>;     // minted - burned
+export ledger _maxSupply: Uint<128>;
+export ledger _name: Opaque<"string">;
+export ledger _symbol: Opaque<"string">;
+export ledger _decimals: Uint<8>;
+export ledger owner: Bytes<32>;            // hash-derived manager account (as in v2.6)
+export ledger treasury: Bytes<32>;         // wallet (UserAddress bytes) that emergencyWithdraw pays
+export ledger _contractSalt: Bytes<32>;
+
+// Emergency Stop State
+export ledger _paused: Boolean;
+export ledger _emergencyPauser: Bytes<32>;
+
+// Privacy-Preserving Multi-Sig State (OpenZeppelin Pattern)
+export ledger _multisigSigners: Set<Bytes<32>>;
+export ledger _multisigThreshold: Uint<8>;
+export ledger _multisigSignerCount: Uint<8>;
+export ledger _multisigNonce: Counter;
+
+// Private witness providing caller secret key for the manager (owner / pauser) authentication
+witness localSecretKey(): Bytes<32>;
+
+circuit authenticate(account: Bytes<32>): [] {
+  const sk = localSecretKey();
+  const domainTag = pad(32, "fungible-token:auth");
+  const derivedAccount = persistentHash<[Bytes<32>, Bytes<32>, Bytes<32>]>([
+    domainTag,
+    _contractSalt,
+    sk
+  ]);
+  assert(derivedAccount == account, "FungibleToken: caller authorization failed");
+}
+
+circuit whenNotPaused(): [] {
+  assert(!_paused, "FungibleToken: contract is paused");
+}
+
+circuit whenPaused(): [] {
+  assert(_paused, "FungibleToken: contract is not paused");
+}
+
+circuit onlyOwner(account: Bytes<32>): [] {
+  authenticate(account);
+  assert(disclose(account) == owner, "FungibleToken: only owner can call this");
+}
+
+circuit onlyPauser(account: Bytes<32>): [] {
+  authenticate(account);
+  assert(disclose(account) == _emergencyPauser || disclose(account) == owner,
+         "FungibleToken: only pauser or owner can call this");
+}
+
+// The token's color: deterministic from (domain, this contract).
+circuit tokenColor(): Bytes<32> {
+  return tokenType(pad(32, "fungible-token:native"), kernel.self());
+}
+
+circuit userAddress(bytes: Bytes<32>): Either<ContractAddress, UserAddress> {
+  return right<ContractAddress, UserAddress>(UserAddress { bytes: bytes });
+}
+
+circuit isZeroKey(k: Bytes<32>): Boolean {
+  return k == pad(32, "");
+}
+
+// ============ Constructor ============
+
+constructor(
+  salt_: Bytes<32>,
+  initialOwner: Bytes<32>,
+  treasury_: Bytes<32>,
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  maxSupply_: Uint<128>,
+  initialSigners: Vector<3, Bytes<32>>,
+  threshold_: Uint<8>
+) {
+  const MAX_UINT128 = 340282366920938463463374607431768211455;
+  _contractSalt = disclose(salt_);
+  owner = disclose(initialOwner);
+  treasury = disclose(treasury_);
+  _name = disclose(name_);
+  _symbol = disclose(symbol_);
+  _decimals = disclose(decimals_);
+  _totalSupply = 0;
+  if (disclose(maxSupply_) == 0) {
+    _maxSupply = MAX_UINT128;
+  } else {
+    _maxSupply = disclose(maxSupply_);
+  }
+
+  _paused = false;
+  _emergencyPauser = disclose(initialOwner);
+
+  assert(threshold_ >= 1 && threshold_ <= 3, "FungibleToken: invalid threshold");
+  _multisigThreshold = disclose(threshold_);
+  _multisigSignerCount = 3;
+
+  for (const s of initialSigners) {
+    assert(!_multisigSigners.member(disclose(s)), "FungibleToken: duplicate initial signer");
+    _multisigSigners.insert(disclose(s));
+  }
+}
+
+// ============ Multi-Sig Helper Circuits ============
+
+/**
+ * Computes a signer commitment from a public key:
+ * persistentHash([pad(32, "multisig:signer:"), salt, pk_x, pk_y])
+ * Pure, so deployers and signers can derive commitments off-chain.
+ */
+export pure circuit calculateSignerCommitment(pk: JubjubPoint, salt: Bytes<32>): Bytes<32> {
+  return persistentHash<[Bytes<32>, Bytes<32>, Bytes<32>, Bytes<32>]>([
+    pad(32, "multisig:signer:"),
+    salt,
+    jubjubPointX(pk) as Bytes<32>,
+    jubjubPointY(pk) as Bytes<32>
+  ]);
+}
+
+pure circuit isZeroPoint(pk: JubjubPoint): Boolean {
+  return jubjubPointX(pk) == (0 as Field) && jubjubPointY(pk) == (1 as Field);
+}
+
+/**
+ * Asserts two pubkey slots are not the same registered signer, unless
+ * either slot is the identity point (0,1) (an unused slot, which is exempt
+ * from the duplicate check).
+ */
+circuit assertDistinctPair(a: JubjubPoint, b: JubjubPoint): [] {
+  if (disclose(!isZeroPoint(a) && !isZeroPoint(b))) {
+    assert(
+      jubjubPointX(a) != jubjubPointX(b) || jubjubPointY(a) != jubjubPointY(b),
+      "FungibleToken: duplicate signer detected"
+    );
+  }
+}
+
+/**
+ * Enforces threshold signature verification over an operation digest, using
+ * up to 3 signer slots. Unused slots (beyond the configured threshold) MUST
+ * be passed as a zero/default JubjubPoint and are skipped rather than
+ * verified, which lets a single deployment support threshold in {1, 2, 3}
+ * without bricking the contract or silently over-requiring signatures.
+ *
+ * Verifies, for every non-zero slot:
+ * 1. No two supplied signer pubkeys are duplicates.
+ * 2. Each signer commitment is registered in _multisigSigners.
+ * 3. Each Schnorr signature is cryptographically valid over the operation hash.
+ * Then asserts that the number of valid, non-zero, distinct, registered
+ * signatures meets or exceeds _multisigThreshold.
+ */
+circuit assertApprovals(
+  msgHash: Bytes<32>,
+  pubkeys: Vector<3, JubjubPoint>,
+  signatures: Vector<3, SchnorrSignature>
+): [] {
+  // Pairwise duplicate check across all non-zero slots. Compact's for-loops
+  // require static range bounds, so with only 3 slots we enumerate the 3
+  // possible pairs explicitly (via the pure helper below) rather than
+  // nesting a loop with a dynamic start bound, which the compiler rejects.
+  assertDistinctPair(pubkeys[0], pubkeys[1]);
+  assertDistinctPair(pubkeys[0], pubkeys[2]);
+  assertDistinctPair(pubkeys[1], pubkeys[2]);
+
+  const msgVec: Vector<1, Field> = [transientHash<Bytes<32>>(msgHash)];
+
+  // Unrolled (rather than a loop with a mutable accumulator) to stay within
+  // the same static, index-literal style already used elsewhere in this
+  // file. Each slot contributes 0 or 1 to validCount depending on whether
+  // it is populated (non-zero); populated slots are checked for
+  // registration and signature validity as a side effect.
+  const validCount0: Uint<8> = checkApprovalSlot(pubkeys[0], signatures[0], msgVec);
+  const validCount1: Uint<8> = checkApprovalSlot(pubkeys[1], signatures[1], msgVec);
+  const validCount2: Uint<8> = checkApprovalSlot(pubkeys[2], signatures[2], msgVec);
+  const validCount: Uint<8> = (validCount0 + validCount1 + validCount2) as Uint<8>;
+
+  assert(validCount >= _multisigThreshold, "FungibleToken: threshold not met");
+}
+
+/**
+ * Checks one multisig approval slot: if the slot is populated (non-zero
+ * pubkey), asserts the signer is registered and the Schnorr signature is
+ * valid, then returns 1; an empty (zero-pubkey) slot is skipped and
+ * returns 0 without any assertion.
+ */
+circuit checkApprovalSlot(
+  pk: JubjubPoint,
+  signature: SchnorrSignature,
+  msgVec: Vector<1, Field>
+): Uint<8> {
+  if (disclose(isZeroPoint(pk))) {
+    return 0;
+  }
+  const comm = calculateSignerCommitment(pk, _contractSalt);
+  assert(_multisigSigners.member(disclose(comm)), "FungibleToken: signer not registered");
+  schnorrVerify<1>(msgVec, signature, pk);
+  return 1;
+}
+
+// ============ Multi-Sig Governed Operations ============
+
+/**
+ * Mints `value` native tokens to a wallet (UserAddress bytes), authorized by threshold multi-sig.
+ * Message hash commits to ("multisig:mint:", contractAddress, nonce, to, value) - identical layout to v2.6.
+ */
+export circuit mint(
+  to: Bytes<32>,
+  value: Uint<64>,
+  pubkeys: Vector<3, JubjubPoint>,
+  signatures: Vector<3, SchnorrSignature>
+): Boolean {
+  whenNotPaused();
+  assert(!isZeroKey(to), "FungibleToken: invalid receiver");
+  assert(_totalSupply + (value as Uint<128>) <= _maxSupply, "FungibleToken: max supply exceeded");
+
+  const opNonce = _multisigNonce;
+  _multisigNonce.increment(1);
+
+  const msgHash = persistentHash<Vector<5, Bytes<32>>>([
+    pad(32, "multisig:mint:"),
+    kernel.self().bytes,
+    opNonce as Bytes<32>,
+    to,
+    value as Bytes<32>
+  ]);
+  assertApprovals(msgHash, pubkeys, signatures);
+
+  mintUnshieldedToken(pad(32, "fungible-token:native"), disclose(value), userAddress(disclose(to)));
+  _totalSupply = disclose((_totalSupply + (value as Uint<128>)) as Uint<128>);
+  return true;
+}
+
+/**
+ * Destroys `value` tokens HELD BY THE CONTRACT (deposited earlier) by sending them to the all-zero address,
+ * authorized by threshold multi-sig. Tokens in wallets cannot be burned by the contract.
+ * Message hash commits to ("multisig:burn:", contractAddress, nonce, value).
+ */
+export circuit burn(
+  value: Uint<128>,
+  pubkeys: Vector<3, JubjubPoint>,
+  signatures: Vector<3, SchnorrSignature>
+): Boolean {
+  whenNotPaused();
+  assert(_totalSupply >= value, "FungibleToken: burn exceeds supply");
+  assert(unshieldedBalanceGte(tokenColor(), disclose(value)), "FungibleToken: contract holds too little to burn");
+
+  const opNonce = _multisigNonce;
+  _multisigNonce.increment(1);
+
+  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "multisig:burn:"),
+    kernel.self().bytes,
+    opNonce as Bytes<32>,
+    value as Bytes<32>
+  ]);
+  assertApprovals(msgHash, pubkeys, signatures);
+
+  sendUnshielded(tokenColor(), disclose(value), userAddress(pad(32, "")));
+  _totalSupply = disclose((_totalSupply - value) as Uint<128>);
+  return true;
+}
+
+/**
+ * Pays `value` of the contract-held balance to a wallet, authorized by threshold multi-sig.
+ * Message hash commits to ("multisig:withdraw:", contractAddress, nonce, to, value).
+ */
+export circuit contractWithdraw(
+  to: Bytes<32>,
+  value: Uint<128>,
+  pubkeys: Vector<3, JubjubPoint>,
+  signatures: Vector<3, SchnorrSignature>
+): Boolean {
+  whenNotPaused();
+  assert(!isZeroKey(to), "FungibleToken: invalid receiver");
+  assert(unshieldedBalanceGte(tokenColor(), disclose(value)), "FungibleToken: contract holds too little");
+
+  const opNonce = _multisigNonce;
+  _multisigNonce.increment(1);
+
+  const msgHash = persistentHash<Vector<5, Bytes<32>>>([
+    pad(32, "multisig:withdraw:"),
+    kernel.self().bytes,
+    opNonce as Bytes<32>,
+    to,
+    value as Bytes<32>
+  ]);
+  assertApprovals(msgHash, pubkeys, signatures);
+
+  sendUnshielded(tokenColor(), disclose(value), userAddress(disclose(to)));
+  return true;
+}
+
+/**
+ * Designates a new emergency pauser, authorized by threshold multi-sig (unchanged from v2.6).
+ */
+export circuit setEmergencyPauser(
+  newPauser: Bytes<32>,
+  pubkeys: Vector<3, JubjubPoint>,
+  signatures: Vector<3, SchnorrSignature>
+): Boolean {
+  assert(!isZeroKey(newPauser), "FungibleToken: invalid pauser address");
+
+  const opNonce = _multisigNonce;
+  _multisigNonce.increment(1);
+
+  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "multisig:set-pauser:"),
+    kernel.self().bytes,
+    opNonce as Bytes<32>,
+    newPauser
+  ]);
+  assertApprovals(msgHash, pubkeys, signatures);
+
+  _emergencyPauser = disclose(newPauser);
+  return true;
+}
+
+/**
+ * Replaces one registered multisig signer with a new one, authorized by
+ * threshold multi-sig. Keeps the signer count fixed (remove one, add one).
+ *
+ * Design notes:
+ * - The OUTGOING signer is identified by its commitment, not its pubkey,
+ *   because the usual reason to rotate is a lost or compromised key whose
+ *   pubkey may no longer be available.
+ * - The INCOMING signer supplies its pubkey plus a proof-of-possession
+ *   Schnorr signature. The contract derives the commitment itself, so a
+ *   mistyped or unsignable commitment can never be registered (which would
+ *   silently shrink the effective signer set).
+ * - Intentionally NOT gated by whenNotPaused(): rotation is the recovery
+ *   path during an incident and must remain available while paused.
+ * - Nonce-bound and contract-bound like every other governed operation, so
+ *   an approval cannot be replayed or reused on another contract.
+ *
+ * Message hash commits to
+ *   ("multisig:rotate-signer:", contractAddress, nonce, oldCommitment, newCommitment).
+ * The proof-of-possession signs a domain-separated digest of that hash:
+ *   persistentHash(["multisig:rotate-pop:", msgHash]).
+ */
+export circuit rotateSigner(
+  oldSignerCommitment: Bytes<32>,
+  newSignerPubkey: JubjubPoint,
+  newSignerPop: SchnorrSignature,
+  pubkeys: Vector<3, JubjubPoint>,
+  signatures: Vector<3, SchnorrSignature>
+): Boolean {
+  assert(!isZeroPoint(newSignerPubkey), "FungibleToken: invalid new signer");
+
+  const newSignerCommitment = calculateSignerCommitment(newSignerPubkey, _contractSalt);
+
+  assert(_multisigSigners.member(disclose(oldSignerCommitment)), "FungibleToken: old signer not registered");
+  assert(!_multisigSigners.member(disclose(newSignerCommitment)), "FungibleToken: new signer already registered");
+
+  const opNonce = _multisigNonce;
+  _multisigNonce.increment(1);
+
+  const msgHash = persistentHash<Vector<5, Bytes<32>>>([
+    pad(32, "multisig:rotate-signer:"),
+    kernel.self().bytes,
+    opNonce as Bytes<32>,
+    oldSignerCommitment,
+    newSignerCommitment
+  ]);
+
+  // Existing signers authorize the rotation.
+  assertApprovals(msgHash, pubkeys, signatures);
+
+  // Incoming signer proves it controls the key behind the new commitment.
+  const popDigest = persistentHash<Vector<2, Bytes<32>>>([
+    pad(32, "multisig:rotate-pop:"),
+    msgHash
+  ]);
+  const popMsg: Vector<1, Field> = [transientHash<Bytes<32>>(popDigest)];
+  schnorrVerify<1>(popMsg, newSignerPop, newSignerPubkey);
+
+  _multisigSigners.remove(disclose(oldSignerCommitment));
+  _multisigSigners.insert(disclose(newSignerCommitment));
+  return true;
+}
+
+// ============ Pause Functions ============
+
+/**
+ * Pauses all token transfers, approvals, and minting/burning
+ * Can be called by owner or designated emergency pauser
+ */
+export circuit pause(caller: Bytes<32>): Boolean {
+  onlyPauser(caller);
+  whenNotPaused();
+  _paused = true;
+  return true;
+}
+
+/**
+ * Unpauses the contract
+ * Can be called by owner or designated emergency pauser
+ */
+export circuit unpause(caller: Bytes<32>): Boolean {
+  onlyPauser(caller);
+  whenPaused();
+  _paused = false;
+  return true;
+}
+
+// ============ Treasury / contract-held balance ============
+
+/**
+ * Moves `value` from the caller's wallet into the contract-held balance (treasury -> contract).
+ * The transaction must carry that many unshielded inputs of this token; the wallet funds them when balancing.
+ */
+export circuit deposit(value: Uint<128>): Boolean {
+  whenNotPaused();
+  assert(value > 0, "FungibleToken: nothing to deposit");
+  receiveUnshielded(tokenColor(), disclose(value));
+  return true;
+}
+
+/**
+ * Emergency recovery: while paused the owner sends contract-held tokens to the fixed treasury wallet.
+ */
+export circuit emergencyWithdraw(caller: Bytes<32>, value: Uint<128>): Boolean {
+  onlyOwner(caller);
+  whenPaused();
+  assert(unshieldedBalanceGte(tokenColor(), disclose(value)), "FungibleToken: contract holds too little");
+  sendUnshielded(tokenColor(), disclose(value), userAddress(treasury));
+  return true;
+}
+
