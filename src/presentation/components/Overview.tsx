@@ -8,6 +8,7 @@ import { parsePubkey } from '@/application/validation';
 import { useApp } from '../providers/AppProvider';
 import { useT } from '../i18n';
 import { Badge, Card, Field, Mono, Stat } from './ui';
+import { useMyBalance } from '../hooks/useMyBalance';
 
 export function RoleBanner() {
   const { t } = useT();
@@ -31,6 +32,7 @@ export function RoleBanner() {
 export function TokenOverview() {
   const { t } = useT();
   const { state, refresh, guard, gateway, missingCircuits, registerRemainingCircuits, busy, deployProgress } = useApp();
+  const my = useMyBalance();
   if (!state) return <Card><p className="text-slate-400">{t('overview.empty')}</p></Card>;
   const fmt = (v: bigint) => formatAmount(v, state.decimals, { group: true });
   const uncapped = state.maxSupply === (1n << 128n) - 1n;
@@ -48,6 +50,7 @@ export function TokenOverview() {
         <Stat label={t('overview.supply')} value={fmt(state.totalSupply)} sub={state.symbol} />
         <Stat label={t('overview.maxSupply')} value={uncapped ? '∞' : fmt(state.maxSupply)} />
         <Stat label={t('overview.status')} value={<Badge tone={state.paused ? 'bad' : 'ok'}>{state.paused ? t('overview.paused') : t('overview.active')}</Badge>} />
+        <Stat label={t('ops.myBalance')} value={my.balance === null ? (my.error ? '—' : '…') : fmt(my.balance)} sub={state.symbol} />
         <Stat label={t('overview.contractHeld')} value={fmt(state.contractBalance)} sub={state.symbol} />
         <Stat label={t('overview.threshold')} value={`${state.multisigThreshold} / ${state.multisigSignerCount}`} sub={`${t('overview.nonce')}: ${state.multisigNonce}`} />
       </div>

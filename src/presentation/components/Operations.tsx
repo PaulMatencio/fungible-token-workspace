@@ -5,6 +5,7 @@ import { formatAmount } from '@/domain/amount';
 import { shortHex } from '@/domain/hex';
 import { networkConfig } from '@/infrastructure/config/network';
 import { walletAddressToHex } from '@/infrastructure/wallet/address';
+import { useMyBalance } from '../hooks/useMyBalance';
 import { useApp } from '../providers/AppProvider';
 import { useT } from '../i18n';
 import { ActionForm } from './ActionForm';
@@ -39,7 +40,7 @@ export function BalancesPanel() {
   const { t } = useT();
   const { tokenService: s, state, mode, walletHex, guard } = useApp();
   const [other, setOther] = useState('');
-  const [mine, setMine] = useState<bigint | null>(null);
+  const my = useMyBalance();
   const [theirs, setTheirs] = useState<bigint | null>(null);
   if (!s || !state) return null;
   const fmt = (v: bigint) => `${formatAmount(v, state.decimals, { group: true })} ${state.symbol}`;
@@ -52,10 +53,7 @@ export function BalancesPanel() {
       </div>
       <div className="mb-4 rounded-xl border border-midnight-700 bg-midnight-900/50 p-3">
         <div className="label">{t('ops.myBalance')}</div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className="btn-ghost" onClick={async () => setMine((await guard(() => s.myBalance())) ?? null)}>{t('ops.query')}</button>
-          {mine !== null && <Badge tone="accent">{fmt(mine)}</Badge>}
-        </div>
+        <Badge tone="accent">{my.balance === null ? (my.error ? '—' : '…') : fmt(my.balance)}</Badge>
         {walletHex && <p className="mt-2 mono text-slate-500" title={walletHex}>{shortHex(walletHex, 14, 10)}</p>}
       </div>
       {mode === 'test' && (
