@@ -1,7 +1,8 @@
 /**
  * Unshielded token balance of ANY address, computed from the indexer's UTXO history (no wallet involved):
  * balance = Σ created UTXOs − Σ spent UTXOs of the token color, replayed from the `unshieldedTransactions`
- * subscription until the indexer reports progress up to its highest transaction.
+ * subscription. The indexer sends a progress message FIRST and then streams the history, so the replay is complete
+ * once the stream has gone quiet (IDLE_MS without a new event) after progress arrived.
  */
 import { createClient } from 'graphql-ws';
 
@@ -16,6 +17,8 @@ const SUBSCRIPTION = `subscription($a: UnshieldedAddress!) {
   }
 }`;
 
+const IDLE_MS = 1200;
+
 type Utxo = { tokenType: string; value: string; intentHash: string; outputIndex: number };
 
 export function indexerUnshieldedBalance(wsUrl: string, address: string, colorHex: string, timeoutMs = 20_000): Promise<bigint> {
@@ -25,9 +28,11 @@ export function indexerUnshieldedBalance(wsUrl: string, address: string, colorHe
   return new Promise<bigint>((resolve, reject) => {
     const client = createClient({ url: wsUrl, lazy: true, retryAttempts: 0 });
     let dispose = () => {};
-    let seenTx = 0;
+    let idle: ReturnType<typeof setTimeout> | undefined;
+    let progressed = false;
     const finish = (err?: Error) => {
       clearTimeout(timer);
+      clearTimeout(idle);
       dispose();
       void client.dispose();
       if (err) return reject(err);
@@ -46,19 +51,18 @@ export function indexerUnshieldedBalance(wsUrl: string, address: string, colorHe
             | { __typename: string; createdUtxos?: Utxo[]; spentUtxos?: Utxo[]; highestTransactionId?: number }
             | undefined;
           if (!ev) return;
+          clearTimeout(idle);
           if (ev.__typename === 'UnshieldedTransaction') {
-            seenTx += 1;
             for (const u of ev.createdUtxos ?? []) if (u.tokenType.toLowerCase() === color) live.set(id(u), BigInt(u.value));
             for (const u of ev.spentUtxos ?? []) if (u.tokenType.toLowerCase() === color) spent.add(id(u));
           } else if (ev.__typename === 'UnshieldedTransactionsProgress') {
-            // Progress is sent once the stored history has been replayed (and again as new blocks arrive).
-            finish();
+            progressed = true;
           }
+          if (progressed) idle = setTimeout(() => finish(), IDLE_MS);
         },
         error: (e) => finish(e instanceof Error ? e : new Error(JSON.stringify(e))),
         complete: () => finish()
       }
     );
-    void seenTx;
   });
 }
