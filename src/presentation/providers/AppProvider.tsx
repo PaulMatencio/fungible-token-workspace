@@ -297,7 +297,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [gateway, state, account, walletHex]
   );
   const multisig = useMemo(
-    () => (gateway && state ? new MultisigService(gateway, signerCrypto, networkConfig.networkId, state.decimals) : null),
+    () => (gateway && state ? new MultisigService(gateway, signerCrypto, networkConfig.networkId, state.decimals, txLog) : null),
     [gateway, state]
   );
 

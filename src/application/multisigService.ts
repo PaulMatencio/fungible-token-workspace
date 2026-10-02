@@ -3,7 +3,8 @@ import { bytesToHex } from '@/domain/hex';
 import type { ApprovalFile, MultisigOp, SigningRequest } from '@/domain/multisig';
 import { parseApprovalFile } from '@/domain/multisig';
 import type { TokenState, TxReceipt } from '@/domain/token';
-import type { SignerCrypto, TokenGateway } from './ports';
+import { friendlyMessage } from '@/domain/errors';
+import type { SignerCrypto, TokenGateway, TxLogPort } from './ports';
 import { parsePubkey, requireAccount, requireAmount, requireWalletAddress } from './validation';
 import { runTracked } from './actionRun';
 
@@ -32,7 +33,8 @@ export class MultisigService {
     private readonly gateway: TokenGateway,
     private readonly crypto: SignerCrypto,
     private readonly network: string,
-    private readonly decimals: number
+    private readonly decimals: number,
+    private readonly log?: TxLogPort
   ) {}
 
   buildRequest(state: TokenState, input: OpInput): SigningRequest {
@@ -94,6 +96,20 @@ export class MultisigService {
   }
 
   async submit(req: SigningRequest, approvals: ApprovalFile[], pop?: ApprovalFile): Promise<TxReceipt> {
+    const at = Date.now();
+    const circuit = req.op.type;
+    const base = { contractAddress: req.contractAddress, circuit, mode: this.gateway.mode, at };
+    try {
+      const r = await this.run(req, approvals, pop);
+      await this.log?.add({ ...base, id: `${r.txHash}:${circuit}`, txHash: r.txHash, txId: r.txId, blockHeight: r.blockHeight, status: 'finalized' });
+      return r;
+    } catch (e) {
+      await this.log?.add({ ...base, id: `fail:${at}:${circuit}`, txHash: '', txId: '', status: 'failed', error: friendlyMessage(e) });
+      throw e;
+    }
+  }
+
+  private async run(req: SigningRequest, approvals: ApprovalFile[], pop?: ApprovalFile): Promise<TxReceipt> {
     return runTracked({ mode: this.gateway.mode, title: req.op.type, multisig: true }, async (verified) => {
       const distinct = new Set(approvals.map((a) => `${a.publicKey.x}:${a.publicKey.y}`));
       if (distinct.size !== approvals.length) throw new AppError('VALIDATION', 'Duplicate signer among approvals');
