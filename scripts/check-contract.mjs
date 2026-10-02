@@ -58,6 +58,6 @@ try {
   if (list) indexed = BigInt(list.find((b) => b.tokenType.toLowerCase() === colorHex)?.amount ?? 0);
   else console.log(`Indexer  : ${JSON.stringify(ij.errors ?? ij).slice(0, 200)}`);
 } catch (e) { console.log(`Indexer  : unreachable (${e.message})`); }
-console.log(`Held by the contract (indexer UTXO balance): ${indexed ?? 'n/a'} base units  [color ${colorHex.slice(0, 12)}…]`);
-console.log(`Held by the contract (node ContractState)  : ${held} base units`);
+console.log(`Indexer per-contract field (may stay empty)  : ${indexed ?? 'n/a'} base units  [color ${colorHex.slice(0, 12)}…]`);
+console.log(`Held by the contract (ContractState, authoritative): ${held} base units`);
 console.log(missing.length ? `Missing    (${missing.length}): ${missing.join(', ')}` : 'All circuits registered.');

@@ -233,15 +233,18 @@ export class ChainGateway implements TokenGateway {
     if (!cs) throw new AppError('CONTRACT_REJECTED', 'Contract state not found on this network');
     const l = ledger(cs.data);
     const color = nativeColorHex(this.contractAddress);
-    // Held tokens are read from the indexer's unshielded UTXO balances (what the network actually credited); the
-    // ContractState balance map is only a fallback if the indexer has no entry yet.
+    // Contract-held tokens live in the ledger's ContractState balance, which is authoritative. The indexer's
+    // per-contract `unshieldedBalances` field stays empty after a deposit (verified on preprod), so it is only a
+    // fallback for a state that carries no entry. Wallet balances use the UTXO history instead (see walletBalance).
     let held = heldBalance(cs.balance as unknown as Map<unknown, bigint>, color);
-    try {
-      const utxo = await this.providers.publicDataProvider.queryUnshieldedBalances(this.contractAddress);
-      const hit = utxo?.find((b) => String(b.tokenType).toLowerCase() === color);
-      if (hit) held = hit.balance;
-    } catch (e) {
-      console.warn('[state] indexer unshielded balances unavailable, using contract state', e);
+    if (held === 0n) {
+      try {
+        const utxo = await this.providers.publicDataProvider.queryUnshieldedBalances(this.contractAddress);
+        const hit = utxo?.find((b) => String(b.tokenType).toLowerCase() === color);
+        if (hit) held = hit.balance;
+      } catch (e) {
+        console.warn('[state] indexer unshielded balances unavailable', e);
+      }
     }
     return {
       contractAddress: this.contractAddress,
