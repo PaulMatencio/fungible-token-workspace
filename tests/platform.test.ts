@@ -296,3 +296,13 @@ describe('wallet address codec', () => {
     await expect(walletAddressToHex('hello', 'preprod')).rejects.toThrow(/Expected a Midnight unshielded address/);
   });
 });
+
+describe('contract version detection', () => {
+  it('flags circuits that belong to another contract version, and accepts a partial (staged) set of ours', async () => {
+    const { foreignCircuits } = await import('@/infrastructure/gateway/chainGateway');
+    const { allCircuitIds } = await import('@/infrastructure/contract/compiled');
+    const ours = allCircuitIds();
+    expect(foreignCircuits(ours.slice(0, 3), ours)).toEqual([]); // staged deploy: only some registered
+    expect(foreignCircuits([...ours.slice(0, 2), 'someOtherVersionCircuit'], ours)).toEqual(['someOtherVersionCircuit']);
+  });
+});

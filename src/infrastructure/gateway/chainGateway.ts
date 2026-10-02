@@ -16,6 +16,7 @@ import type { ConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
 import { activeSink } from '@/application/deployProgress';
 import { heldBalance, nativeColorHex } from '../contract/token';
 import { hexToWalletAddress } from '../wallet/address';
+import { indexerUnshieldedBalance } from '../indexer/unshieldedBalance';
 import type { AppProviders } from '../wallet/providers';
 import { padApprovals } from './simulatorGateway';
 
@@ -50,6 +51,15 @@ export interface WalletCtx {
   networkId: string;
 }
 
+/**
+ * Circuits registered on a contract that this app's compiled contract doesn't have. Same-named circuits of another
+ * contract version have different verifier keys, so midnight-js would fail with a confusing "mismatched verifier keys";
+ * detecting foreign circuits first gives a clear answer.
+ */
+export function foreignCircuits(registered: Iterable<string>, known: readonly string[]): string[] {
+  return [...registered].filter((c) => !known.includes(c));
+}
+
 export class ChainGateway implements TokenGateway {
   readonly mode = 'wallet' as const;
 
@@ -77,6 +87,13 @@ export class ChainGateway implements TokenGateway {
   private static async open(providers: AppProviders, address: string, getSecretKey: () => Uint8Array): Promise<Found> {
     const have = await ChainGateway.registered(providers, address);
     const all = allCircuitIds();
+    const foreign = foreignCircuits(have, all);
+    if (foreign.length > 0) {
+      throw new AppError(
+        'CONTRACT_VERSION',
+        `Contract ${address.slice(0, 10)}… is a different version of this token (it has circuits this app does not know: ${foreign.join(', ')}). It is a v2.6 contract — open it in the v2.6 app at http://localhost:3001 (the v2.6 project, fungible-token-workspace-v2.6). Nothing was changed.`
+      );
+    }
     const subset = all.every((c) => have.has(c)) ? undefined : all.filter((c) => have.has(c));
     return (await (findDeployedContract as unknown as (p: unknown, o: unknown) => Promise<Found>)(providers, {
       contractAddress: address,
@@ -216,6 +233,16 @@ export class ChainGateway implements TokenGateway {
     if (!cs) throw new AppError('CONTRACT_REJECTED', 'Contract state not found on this network');
     const l = ledger(cs.data);
     const color = nativeColorHex(this.contractAddress);
+    // Held tokens are read from the indexer's unshielded UTXO balances (what the network actually credited); the
+    // ContractState balance map is only a fallback if the indexer has no entry yet.
+    let held = heldBalance(cs.balance as unknown as Map<unknown, bigint>, color);
+    try {
+      const utxo = await this.providers.publicDataProvider.queryUnshieldedBalances(this.contractAddress);
+      const hit = utxo?.find((b) => String(b.tokenType).toLowerCase() === color);
+      if (hit) held = hit.balance;
+    } catch (e) {
+      console.warn('[state] indexer unshielded balances unavailable, using contract state', e);
+    }
     return {
       contractAddress: this.contractAddress,
       name: l._name,
@@ -226,7 +253,7 @@ export class ChainGateway implements TokenGateway {
       owner: bytesToHex(l.owner),
       treasury: bytesToHex(l.treasury),
       tokenColor: color,
-      contractBalance: heldBalance(cs.balance as unknown as Map<unknown, bigint>, color),
+      contractBalance: held,
       contractSalt: bytesToHex(l._contractSalt),
       paused: l._paused,
       emergencyPauser: bytesToHex(l._emergencyPauser),
@@ -237,13 +264,23 @@ export class ChainGateway implements TokenGateway {
     };
   }
 
-  /** Only the connected wallet's balance is readable: the wallet API does not expose other wallets' balances. */
+  /**
+   * Any wallet's balance, read from the indexer's unshielded UTXO history (created − spent). Falls back to the
+   * wallet API for the connected wallet if the indexer replay fails.
+   */
   async walletBalance(address: string): Promise<bigint> {
-    if (address.toLowerCase() !== this.wallet.walletHex.toLowerCase()) {
-      throw new AppError('VALIDATION', 'Only your connected wallet’s balance can be read here. Other wallets show their own balance in Lace / 1AM.');
+    const color = nativeColorHex(this.contractAddress);
+    const own = address.toLowerCase() === this.wallet.walletHex.toLowerCase();
+    try {
+      const cfg = await this.wallet.api.getConfiguration();
+      const bech = await hexToWalletAddress(address, this.wallet.networkId);
+      return await indexerUnshieldedBalance(cfg.indexerWsUri, bech, color);
+    } catch (e) {
+      if (!own) throw new AppError('CONTRACT_REJECTED', `Could not read the balance from the indexer: ${describeError(e)}`, { cause: e });
+      console.warn('[balance] indexer UTXO read failed, using wallet API', e);
+      const balances = await this.wallet.api.getUnshieldedBalances();
+      return balances[color] ?? 0n;
     }
-    const balances = await this.wallet.api.getUnshieldedBalances();
-    return balances[nativeColorHex(this.contractAddress)] ?? 0n;
   }
 
   /**
