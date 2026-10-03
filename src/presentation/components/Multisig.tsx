@@ -10,6 +10,7 @@ import { derivePublicKey, makeApprovalFile, pointToJson, randomScalar, signerCom
 import { networkConfig } from '@/infrastructure/config/network';
 import { walletAddressToHex } from '@/infrastructure/wallet/address';
 import { ContractAddressWarning } from './ContractAddressWarning';
+import { ActionProgressPanel } from './DeployProgressPanel';
 import { useApp } from '../providers/AppProvider';
 import { useT } from '../i18n';
 import { Alert, Badge, Card, Field, Mono, Spinner } from './ui';
@@ -297,6 +298,8 @@ export function MultisigWizard({ allowed }: { allowed: OpType[] }) {
           </div>
         </div>
       )}
+      {/* Steps of the submitted operation (verify → prove → balance → submit → confirm); stays after success/failure. */}
+      <div className="mt-4"><ActionProgressPanel /></div>
     </Card>
   );
 }
