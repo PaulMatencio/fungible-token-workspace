@@ -81,6 +81,17 @@ export class TokenService {
   myBalance() {
     return this.gateway.walletBalance(this.wallet);
   }
+  /**
+   * Tokens nobody can ever spend again: BURNT (sent by `burn` to the all-zero address; already removed from the total
+   * supply) and MISDIRECTED (sent to the contract's own address as if it were a wallet; still counted in the supply).
+   */
+  async lostTokens(): Promise<{ burned: bigint; atContractAddress: bigint }> {
+    const [burned, atContractAddress] = await Promise.all([
+      this.gateway.walletBalance('0'.repeat(64)),
+      this.gateway.walletBalance(this.gateway.contractAddress)
+    ]);
+    return { burned, atContractAddress };
+  }
   /** Balance of another wallet (Test Mode only; the real wallet API exposes only the connected wallet). */
   balanceOf(address: string) {
     return this.gateway.walletBalance(requireWalletAddress(address, 'Wallet'));

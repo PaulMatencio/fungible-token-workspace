@@ -230,7 +230,10 @@ export class SimulatorGateway implements TokenGateway {
       },
       () => {
         if (op.type === 'mint') this.credit(op.to, BigInt(op.value));
-        if (op.type === 'burn') this.held -= BigInt(op.value);
+        if (op.type === 'burn') {
+          this.held -= BigInt(op.value);
+          this.credit(ZERO_COIN_PK, BigInt(op.value)); // the circuit sends burnt tokens to the all-zero address
+        }
         if (op.type === 'contractWithdraw') {
           this.held -= BigInt(op.value);
           this.credit(op.to, BigInt(op.value));

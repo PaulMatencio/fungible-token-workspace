@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { KeyRound, RefreshCw, ShieldCheck, Users } from 'lucide-react';
+import { Flame, KeyRound, RefreshCw, ShieldCheck, Users } from 'lucide-react';
 import { formatAmount } from '@/domain/amount';
 import { shortHex } from '@/domain/hex';
 import { explorerContractUrl } from '@/infrastructure/config/network';
@@ -9,6 +9,7 @@ import { useApp } from '../providers/AppProvider';
 import { useT } from '../i18n';
 import { Badge, Card, Field, Mono, Stat } from './ui';
 import { useMyBalance } from '../hooks/useMyBalance';
+import { useLostTokens } from '../hooks/useLostTokens';
 
 export function RoleBanner() {
   const { t } = useT();
@@ -26,6 +27,27 @@ export function RoleBanner() {
         <p className="mt-1 text-sm text-slate-400">{t(`role.${role.role}.desc` as const)}</p>
       </div>
     </div>
+  );
+}
+
+/** Tokens that can never be spent again: burnt, or sent to the contract's own address by mistake. */
+export function LostTokensCard() {
+  const { t } = useT();
+  const { state } = useApp();
+  const lost = useLostTokens();
+  if (!state) return null;
+  const fmt = (v: bigint) => formatAmount(v, state.decimals, { group: true });
+  const show = (v: bigint | undefined) => (lost === null ? '…' : lost === 'error' || v === undefined ? '—' : fmt(v));
+  const total = lost && lost !== 'error' ? lost.burned + lost.atContractAddress : undefined;
+  return (
+    <Card title={t('lost.title')} icon={<Flame size={16} aria-hidden />}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Stat label={t('lost.burned')} value={show(lost && lost !== 'error' ? lost.burned : undefined)} sub={state.symbol} />
+        <Stat label={t('lost.misdirected')} value={show(lost && lost !== 'error' ? lost.atContractAddress : undefined)} sub={state.symbol} />
+        <Stat label={t('lost.total')} value={show(total)} sub={state.symbol} />
+      </div>
+      <p className="mt-3 text-xs text-slate-500">{t('lost.hint')}</p>
+    </Card>
   );
 }
 

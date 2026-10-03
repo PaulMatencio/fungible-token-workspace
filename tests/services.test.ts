@@ -102,6 +102,17 @@ describe('end-to-end services on the simulator (v3)', () => {
     }
   });
 
+  it('lostTokens reports burnt tokens (all-zero address)', async () => {
+    const { gw, ms, approve } = await deployed();
+    const mint = await approve({ type: 'mint', to: ALICE, amount: '100' }, [0, 1]);
+    await ms.submit(mint.req, mint.approvals);
+    const svc = new TokenService(gw, new TxLog(new MemoryStore()), 'f'.repeat(64), 6, ALICE);
+    await svc.deposit('40');
+    const burn = await approve({ type: 'burn', amount: '15' }, [0, 1]);
+    await ms.submit(burn.req, burn.approvals);
+    expect(await svc.lostTokens()).toEqual({ burned: 15_000_000n, atContractAddress: 0n });
+  });
+
   it('burn / withdraw are limited by what the contract holds', async () => {
     const { gw, ms, approve } = await deployed();
     const st = await gw.getState();

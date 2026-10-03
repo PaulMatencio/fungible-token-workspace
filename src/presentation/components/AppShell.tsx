@@ -8,7 +8,7 @@ import { DeployProgressPanel } from './DeployProgressPanel';
 import { HistoryPanel } from './History';
 import { Header } from './Header';
 import { OperationsTab } from './Operations';
-import { IdentityPanel, RoleBanner, TokenOverview } from './Overview';
+import { IdentityPanel, LostTokensCard, RoleBanner, TokenOverview } from './Overview';
 import { Alert } from './ui';
 
 const TABS: { id: string; label: MessageKey; icon: typeof Boxes }[] = [
@@ -51,6 +51,7 @@ function Body() {
             <div className="space-y-4 lg:col-span-2">
               <DeployProgressPanel />
               <TokenOverview />
+              <LostTokensCard />
             </div>
             <IdentityPanel />
           </div>
