@@ -6,6 +6,7 @@ import { walletAddressToHex } from '@/infrastructure/wallet/address';
 import { useApp } from '../providers/AppProvider';
 import { useT } from '../i18n';
 import { Field, Spinner } from './ui';
+import { ContractAddressWarning } from './ContractAddressWarning';
 
 export interface FieldSpec {
   name: string;
@@ -70,6 +71,7 @@ export function ActionForm({
             spellCheck={false}
             onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
           />
+          {f.wallet && <ContractAddressWarning value={values[f.name] ?? ''} />}
         </Field>
       ))}
       <button type="submit" className={danger ? 'btn-danger' : 'btn-primary'} disabled={busy || disabled}>

@@ -9,6 +9,7 @@ import type { MessageKey } from '../i18n';
 import { derivePublicKey, makeApprovalFile, pointToJson, randomScalar, signerCommitment, pointFromJson } from '@/infrastructure/crypto/signing';
 import { networkConfig } from '@/infrastructure/config/network';
 import { walletAddressToHex } from '@/infrastructure/wallet/address';
+import { ContractAddressWarning } from './ContractAddressWarning';
 import { useApp } from '../providers/AppProvider';
 import { useT } from '../i18n';
 import { Alert, Badge, Card, Field, Mono, Spinner } from './ui';
@@ -212,6 +213,7 @@ export function MultisigWizard({ allowed }: { allowed: OpType[] }) {
             ) : (
               <input id={`ms-${f.name}`} className={`input ${f.mono ? 'font-mono text-xs' : ''}`} autoComplete="off" spellCheck={false} value={values[f.name] ?? ''} onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))} />
             )}
+            {f.wallet && <ContractAddressWarning value={values[f.name] ?? ''} />}
           </Field>
         ))}
         {type === 'rotateSigner' && mode === 'test' && (
