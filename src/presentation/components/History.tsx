@@ -1,5 +1,5 @@
 'use client';
-import { History as HistoryIcon } from 'lucide-react';
+import { CloudDownload, History as HistoryIcon } from 'lucide-react';
 import { shortHex } from '@/domain/hex';
 import { explorerTxUrl } from '@/infrastructure/config/network';
 import { useApp } from '../providers/AppProvider';
@@ -8,12 +8,21 @@ import { Badge, Card } from './ui';
 
 export function HistoryPanel() {
   const { t } = useT();
-  const { txs, clearHistory } = useApp();
+  const { txs, clearHistory, syncHistory, mode, busy } = useApp();
   return (
     <Card
       title={t('hist.title')}
       icon={<HistoryIcon size={16} aria-hidden />}
-      actions={txs.length ? <button type="button" className="btn-ghost !px-2 !py-1 text-xs" onClick={() => void clearHistory()}>{t('hist.clear')}</button> : null}
+      actions={
+        <div className="flex gap-2">
+          {mode === 'wallet' && (
+            <button type="button" className="btn-ghost !px-2 !py-1 text-xs" disabled={busy} onClick={() => void syncHistory()} title={t('hist.syncHint')}>
+              <CloudDownload size={14} aria-hidden /> {t('hist.sync')}
+            </button>
+          )}
+          {txs.length ? <button type="button" className="btn-ghost !px-2 !py-1 text-xs" onClick={() => void clearHistory()}>{t('hist.clear')}</button> : null}
+        </div>
+      }
     >
       {txs.length === 0 ? (
         <p className="text-sm text-slate-400">{t('hist.empty')}</p>

@@ -90,6 +90,8 @@ interface AppContextValue {
   txs: TxLogEntry[];
   refresh: () => Promise<void>;
   clearHistory: () => Promise<void>;
+  /** Wallet Mode: adds every on-chain action of this contract that is missing from the local history. */
+  syncHistory: (quiet?: boolean) => Promise<void>;
   // deployment
   deployProgress: DeployProgress | null;
   dismissDeployProgress: () => void;
@@ -309,6 +311,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMissingCircuits((await gw.missingCircuits?.()) ?? []);
   }, []);
 
+  const syncHistory = useCallback(
+    async (quiet = false) => {
+      const gw = gatewayRef.current;
+      if (!gw?.chainHistory) return;
+      const run = async () => {
+        const known = new Set((await txLog.list(gw.contractAddress)).map((e) => e.txHash).filter(Boolean));
+        let added = 0;
+        for (const e of await gw.chainHistory!()) {
+          if (known.has(e.txHash)) continue;
+          known.add(e.txHash);
+          await txLog.add(e);
+          added += 1;
+        }
+        setTxs(await txLog.list(gw.contractAddress));
+        return added;
+      };
+      if (quiet) {
+        await run().catch((e) => console.warn('[history] chain sync failed', e));
+      } else {
+        await guard(async () => { await run(); }, 'History synced from the chain');
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   const persistSim = useCallback(async (gw: SimulatorGateway) => {
     await store.set('sim:snapshot', JSON.stringify(gw.snapshot()));
   }, []);
@@ -383,6 +411,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setState(await gw.getState());
             setTxs(await txLog.list(gw.contractAddress));
             setMissingCircuits((await gw.missingCircuits?.()) ?? []);
+            gatewayRef.current = gw;
+            void syncHistory(true);
           }
         }
       } catch (e) {
@@ -562,9 +592,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setState(st);
         setTxs(await txLog.list(gw.contractAddress));
         setMissingCircuits((await gw.missingCircuits?.()) ?? []);
+        gatewayRef.current = gw;
+        void syncHistory(true);
       }, 'Attached to contract');
     },
-    [guard, mode]
+    [guard, mode, syncHistory]
   );
 
   const forget = useCallback(async () => {
@@ -601,6 +633,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     multisig,
     txs,
     refresh,
+    syncHistory,
     clearHistory: async () => {
       await txLog.clear();
       setTxs([]);

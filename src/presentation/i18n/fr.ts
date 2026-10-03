@@ -137,6 +137,8 @@ export const fr: Record<MessageKey, string> = {
   'lost.misdirected': 'Envoyés à l’adresse du contrat',
   'lost.total': 'Total perdu',
   'lost.hint': 'Les jetons brûlés vont à l’adresse nulle via le circuit burn et sont déjà retirés de l’offre totale. Les jetons envoyés à l’adresse du contrat comme s’il s’agissait d’un portefeuille sont aussi inutilisables, mais restent comptés dans l’offre totale. Personne ne détient de clé pour ces adresses.',
+  'hist.sync': 'Synchroniser depuis la chaîne',
+  'hist.syncHint': 'Ajoute toutes les actions on-chain de ce contrat (mint, burn, retraits multisig inclus) absentes de l’historique de ce navigateur.',
   'overview.contractHeld': 'Détenu par le contrat',
   'overview.treasury': 'Portefeuille trésorerie (octets UserAddress)',
   'overview.color': 'Couleur du jeton',

@@ -135,6 +135,8 @@ export const en = {
   'lost.misdirected': 'Sent to the contract address',
   'lost.total': 'Total lost',
   'lost.hint': 'Burnt tokens went to the all-zero address through the burn circuit and are already removed from the total supply. Tokens sent to the contract’s own address as if it were a wallet are unspendable too, but they are still counted in the total supply. Nobody holds a key for either address.',
+  'hist.sync': 'Sync from chain',
+  'hist.syncHint': 'Adds every on-chain action of this contract (including multisig mints, burns, withdrawals) that is missing from this browser’s history.',
   'overview.contractHeld': 'Held by the contract',
   'overview.treasury': 'Treasury wallet (UserAddress bytes)',
   'overview.color': 'Token color',

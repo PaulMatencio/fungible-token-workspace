@@ -56,6 +56,8 @@ export interface TokenGateway {
 
   /** Wallet Mode only: circuits whose verifier key is not yet on-chain (staged deploy). */
   missingCircuits?(): Promise<string[]>;
+  /** Wallet Mode only: every on-chain action of this contract (from the indexer), as history rows. */
+  chainHistory?(): Promise<TxLogEntry[]>;
   /** Wallet Mode only: registers one missing circuit's verifier key (one maintenance transaction). */
   registerCircuit?(circuit: string): Promise<TxReceipt>;
 

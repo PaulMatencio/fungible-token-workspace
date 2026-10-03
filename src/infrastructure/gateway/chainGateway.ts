@@ -3,7 +3,7 @@
  * through midnight-js and the connected wallet (Lace / 1AM).
  */
 import { deployContract, findDeployedContract, submitInsertVerifierKeyTx } from '@midnight-ntwrk/midnight-js-contracts';
-import type { ApprovalSlotInput, DeployParams, TokenGateway } from '@/application/ports';
+import type { ApprovalSlotInput, DeployParams, TokenGateway, TxLogEntry } from '@/application/ports';
 import { AppError, compactText, deepMessage } from '@/domain/errors';
 import { bytesToHex, hex32ToBytes } from '@/domain/hex';
 import type { ApprovalFile, MultisigOp } from '@/domain/multisig';
@@ -17,6 +17,7 @@ import { activeSink } from '@/application/deployProgress';
 import { heldBalance, nativeColorHex } from '../contract/token';
 import { hexToWalletAddress } from '../wallet/address';
 import { indexerUnshieldedBalance } from '../indexer/unshieldedBalance';
+import { fetchContractHistory } from '../indexer/contractHistory';
 import type { AppProviders } from '../wallet/providers';
 import { padApprovals } from './simulatorGateway';
 
@@ -226,6 +227,23 @@ export class ChainGateway implements TokenGateway {
     }
     if (stop.done) return;
     throw new AppError('CONTRACT_REJECTED', `Registering “${circuit}” was not confirmed on-chain within ${Math.round(timeoutMs / 60_000)} minutes. Check your wallet's history for a pending transaction, then use “Register remaining circuits” again.`);
+  }
+
+  /** Every deploy / maintenance / call of this contract as recorded by the indexer, as history rows. */
+  async chainHistory(): Promise<TxLogEntry[]> {
+    const cfg = await this.wallet.api.getConfiguration();
+    const actions = await fetchContractHistory(cfg.indexerWsUri, this.contractAddress);
+    return actions.map((a) => ({
+      id: `${a.txHash}:${a.circuit}`,
+      contractAddress: this.contractAddress,
+      circuit: a.circuit,
+      txHash: a.txHash,
+      txId: '',
+      blockHeight: a.blockHeight,
+      status: 'finalized' as const,
+      at: a.at,
+      mode: 'wallet' as const
+    }));
   }
 
   async getState(): Promise<TokenState> {
