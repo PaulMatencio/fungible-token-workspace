@@ -22,7 +22,7 @@ export function requireAccount(v: string, label: string): string {
  * A wallet address as 64-hex UserAddress bytes (what the contract takes). The UI converts Bech32m (`mn_addr_…`) to
  * hex before calling services (see infrastructure/wallet/address.ts); this only validates the final form.
  */
-export function requireWalletAddress(v: string, label: string): string {
+export function requireWalletAddress(v: string, label: string, contractAddress?: string): string {
   const raw = v.trim();
   if (raw.toLowerCase().startsWith('mn_')) {
     bad(`${label}: Bech32m address not converted — paste a Midnight unshielded address (mn_addr_…) into the address field`);
@@ -30,6 +30,11 @@ export function requireWalletAddress(v: string, label: string): string {
   const t = raw.replace(/^0x/, '').toLowerCase();
   if (!isHex32(t)) bad(`${label}: expected a Midnight unshielded wallet address (mn_addr_…) or its 64 hex characters`);
   if (/^0{64}$/.test(t)) bad(`${label}: the all-zero address is not allowed`);
+  // A contract address is also 32 bytes, so the circuits would accept it as a wallet — but the tokens would land on an
+  // address nobody holds a key for and be lost for good.
+  if (contractAddress && t === contractAddress.toLowerCase().replace(/^0x/, '')) {
+    bad(`${label}: that is the token CONTRACT's own address, not a wallet. Tokens sent there are lost forever (no one holds its key). To put tokens in the contract, send them to your own wallet and use “Deposit to the contract”.`);
+  }
   return t;
 }
 

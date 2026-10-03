@@ -41,14 +41,14 @@ export class MultisigService {
     let op: MultisigOp;
     switch (input.type) {
       case 'mint':
-        op = { type: 'mint', to: requireWalletAddress(input.to, 'Recipient wallet'), value: requireAmount(input.amount, this.decimals).toString() };
+        op = { type: 'mint', to: requireWalletAddress(input.to, 'Recipient wallet', state.contractAddress), value: requireAmount(input.amount, this.decimals).toString() };
         break;
       case 'burn':
         op = { type: 'burn', value: requireAmount(input.amount, this.decimals).toString() };
         if (BigInt(op.value) > state.contractBalance) throw new AppError('VALIDATION', 'The contract holds fewer tokens than that (burn only destroys contract-held tokens — deposit first)');
         break;
       case 'contractWithdraw':
-        op = { type: 'contractWithdraw', to: requireWalletAddress(input.to, 'Recipient wallet'), value: requireAmount(input.amount, this.decimals).toString() };
+        op = { type: 'contractWithdraw', to: requireWalletAddress(input.to, 'Recipient wallet', state.contractAddress), value: requireAmount(input.amount, this.decimals).toString() };
         if (BigInt(op.value) > state.contractBalance) throw new AppError('VALIDATION', 'The contract holds fewer tokens than that');
         break;
       case 'setEmergencyPauser':

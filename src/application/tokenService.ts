@@ -57,7 +57,7 @@ export class TokenService {
 
   /** Wallet → wallet transfer of the native token (done by the wallet, not the contract). */
   transfer(to: string, amount: string) {
-    const [t, v] = [requireWalletAddress(to, 'Recipient'), requireAmount(amount, this.decimals)];
+    const [t, v] = [requireWalletAddress(to, 'Recipient', this.gateway.contractAddress), requireAmount(amount, this.decimals)];
     return this.track('transfer', () => this.gateway.transferNative(this.wallet, t, v));
   }
   /** Wallet → contract-held balance. */

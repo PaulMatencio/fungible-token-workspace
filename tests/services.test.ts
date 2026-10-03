@@ -94,6 +94,14 @@ describe('end-to-end services on the simulator (v3)', () => {
     expect(() => svc.transfer('00'.repeat(32), '1')).toThrow(/all-zero/);
   });
 
+  it('refuses the contract\'s own address as a recipient (tokens would be lost)', async () => {
+    const { gw, ms } = await deployed();
+    const st = await gw.getState();
+    for (const type of ['mint', 'contractWithdraw'] as const) {
+      expect(() => ms.buildRequest(st, { type, to: gw.contractAddress, amount: '1' })).toThrow(/CONTRACT's own address/);
+    }
+  });
+
   it('burn / withdraw are limited by what the contract holds', async () => {
     const { gw, ms, approve } = await deployed();
     const st = await gw.getState();
