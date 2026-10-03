@@ -102,6 +102,17 @@ describe('end-to-end services on the simulator (v3)', () => {
     }
   });
 
+  it('the circuits themselves refuse the contract address as a recipient (not just the UI)', async () => {
+    const { gw, signers } = await deployed();
+    const st = await gw.getState();
+    for (const type of ['mint', 'contractWithdraw'] as const) {
+      const op = { type, to: gw.contractAddress, value: '1000000' } as const;
+      const req = { version: 1 as const, network: 'preprod', contractAddress: st.contractAddress, contractSalt: st.contractSalt, nonce: st.multisigNonce.toString(), op };
+      const approvals = [0, 1].map((i) => makeApprovalFile(req, signers[i].sk, signers[i].pk));
+      await expect(gw.executeMultisig(op, approvals)).rejects.toThrow(/contract address/);
+    }
+  });
+
   it('lostTokens reports burnt tokens (all-zero address)', async () => {
     const { gw, ms, approve } = await deployed();
     const mint = await approve({ type: 'mint', to: ALICE, amount: '100' }, [0, 1]);

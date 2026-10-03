@@ -484,7 +484,8 @@
         "type-name": "Tuple",
         "types": [
           {
-            "type-name": "Field"
+            "type-name": "Uint",
+            "maxval": 255
           },
           {
             "type-name": "Uint",

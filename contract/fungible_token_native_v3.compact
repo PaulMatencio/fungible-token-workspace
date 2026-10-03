@@ -35,8 +35,10 @@ struct SchnorrHashInput<#n> {
   msg: Vector<n, Field>
 }
 
-// Witness providing quotient and remainder for dividing challenge hash by 2^248
-witness getSchnorrReduction(challengeHash: Field): [Field, Uint<248>];
+// Witness providing quotient and remainder for dividing challenge hash by 2^248.
+// The quotient is typed Uint<8> (NOT Field) and bounded in schnorrVerify: an unbounded quotient lets a prover pick any
+// challenge (q * 2^248 + c == cFull holds mod p for every c) and forge approvals from public keys alone.
+witness getSchnorrReduction(challengeHash: Field): [Uint<8>, Uint<248>];
 
 /**
  * Verifies a Schnorr signature over Jubjub curve with challenge truncated to 248 bits.
@@ -64,7 +66,9 @@ circuit schnorrVerify<#n>(
   );
   const TWO_248: Field = 452312848583266388373324160190187140051835877600158453279131187530910662656 as Field;
   const [q, cTruncated] = getSchnorrReduction(cFull);
-  assert(disclose(q) * TWO_248 + (disclose(cTruncated) as Field) == cFull, "FungibleToken: invalid challenge reduction");
+  // cFull < p < 116 * 2^248, so q <= 115 makes the decomposition q * 2^248 + c unique (no wrap-around mod p).
+  assert(disclose(q) <= 115, "FungibleToken: invalid challenge reduction");
+  assert((disclose(q) as Field) * TWO_248 + (disclose(cTruncated) as Field) == cFull, "FungibleToken: invalid challenge reduction");
   const c: Field = disclose(cTruncated) as Field;
   const lhs: JubjubPoint = ecMulGenerator(response as JubjubScalar);
   const rhs: JubjubPoint = ecAdd(announcement, ecMul(pk, c as JubjubScalar));
@@ -287,6 +291,7 @@ export circuit mint(
 ): Boolean {
   whenNotPaused();
   assert(!isZeroKey(to), "FungibleToken: invalid receiver");
+  assert(to != kernel.self().bytes, "FungibleToken: cannot mint to the contract address");
   assert(_totalSupply + (value as Uint<128>) <= _maxSupply, "FungibleToken: max supply exceeded");
 
   const opNonce = _multisigNonce;
@@ -348,6 +353,7 @@ export circuit contractWithdraw(
 ): Boolean {
   whenNotPaused();
   assert(!isZeroKey(to), "FungibleToken: invalid receiver");
+  assert(to != kernel.self().bytes, "FungibleToken: cannot pay out to the contract address");
   assert(unshieldedBalanceGte(tokenColor(), disclose(value)), "FungibleToken: contract holds too little");
 
   const opNonce = _multisigNonce;

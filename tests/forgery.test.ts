@@ -33,12 +33,16 @@ describe('Schnorr challenge reduction soundness', () => {
     expect(call).toThrow(/invalid signature/);
   });
 
-  // KNOWN VULNERABILITY (security review 2026-10-03): `q` is an unconstrained Field, so a prover can choose the
-  // challenge c = 0 and q = cFull / 2^248 (mod p) and forge approvals from PUBLIC keys alone. `it.fails` documents
-  // the bug; remove `.fails` once the circuit bounds q (e.g. Uint<8> with q <= 115).
-  it.fails('a prover who only knows the public keys cannot pass the threshold', async () => {
+  // FIXED (2026-10-03): the circuit now bounds q (Uint<8>, q <= 115). Before the fix, q was an unconstrained Field, so a
+  // prover could choose challenge c = 0 and q = cFull / 2^248 (mod p) and forge approvals from PUBLIC keys alone.
+  it('a prover who only knows the public keys cannot pass the threshold', async () => {
     // Malicious prover: challenge c = 0, announcement r·G, response r — no secret key involved.
     const call = await setup((h) => [(h * inv(TWO_248)) % P, 0n]);
-    expect(call).toThrow();
+    expect(call).toThrow(/type error|invalid challenge reduction/); // q no longer fits Uint<8>
+  });
+
+  it('an in-range quotient with a forged challenge fails the decomposition check', async () => {
+    const call = await setup((h) => [h / TWO_248, 0n]); // q honest, c forced to 0
+    expect(call).toThrow(/invalid challenge reduction/);
   });
 });

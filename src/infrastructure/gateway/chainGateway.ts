@@ -85,6 +85,34 @@ export class ChainGateway implements TokenGateway {
    * definition while some keys are still pending (staged deploy) would fail with "…undefined or have mismatched
    * verifier keys".
    */
+  /**
+   * A contract deployed from an OLDER build of this token has the same circuit names but different verifier keys.
+   * The 2026-10-03 security fix (bounded Schnorr challenge reduction) changed mint, burn, contractWithdraw,
+   * setEmergencyPauser and rotateSigner — old deployments are forgeable and must not be used.
+   */
+  private static async assertCurrentKeys(providers: AppProviders, address: string, have: Set<string>): Promise<void> {
+    try {
+      const state = await providers.publicDataProvider.queryContractState(address);
+      if (!state) return;
+      const stale: string[] = [];
+      for (const c of have) {
+        const onChain = (state as unknown as { operation(n: string): { verifierKey?: Uint8Array } | undefined }).operation(c)?.verifierKey;
+        if (!onChain) continue;
+        const local = await providers.zkConfigProvider.getVerifierKey(c as never);
+        if (bytesToHex(onChain) !== bytesToHex(local as Uint8Array)) stale.push(c);
+      }
+      if (stale.length > 0) {
+        throw new AppError(
+          'CONTRACT_VERSION',
+          `Contract ${address.slice(0, 10)}… was deployed from an older build of this token (different verifier keys for: ${stale.join(', ')}). Older builds had a signature-verification flaw that let anyone who knows the signers' public keys forge multisig approvals, so this contract must not be used. Deploy a new contract from Build & Deploy. Nothing was changed.`
+        );
+      }
+    } catch (e) {
+      if (e instanceof AppError) throw e;
+      console.warn('[open] could not compare verifier keys', e); // comparison is a safety net; never block on a read error
+    }
+  }
+
   private static async open(providers: AppProviders, address: string, getSecretKey: () => Uint8Array): Promise<Found> {
     const have = await ChainGateway.registered(providers, address);
     const all = allCircuitIds();
@@ -95,6 +123,7 @@ export class ChainGateway implements TokenGateway {
         `Contract ${address.slice(0, 10)}… is a different version of this token (it has circuits this app does not know: ${foreign.join(', ')}). It is a v2.6 contract — open it in the v2.6 app at http://localhost:3001 (the v2.6 project, fungible-token-workspace-v2.6). Nothing was changed.`
       );
     }
+    await ChainGateway.assertCurrentKeys(providers, address, have);
     const subset = all.every((c) => have.has(c)) ? undefined : all.filter((c) => have.has(c));
     return (await (findDeployedContract as unknown as (p: unknown, o: unknown) => Promise<Found>)(providers, {
       contractAddress: address,

@@ -69,3 +69,16 @@ button on the Overview tab resumes it. `npm run deploy:cost [-- --circuits a,b]`
 - Tested through the real compiled circuits (`tests/native-v3.test.ts`); on-chain token movement still needs a preprod run.
 - Deploy cost: all 9 circuits ≈ 22 KB (54% of a block's write budget) — use the staged deploy (core circuits first).
 - The app is migrated to v3 (v2.6 screens removed). Not yet exercised on preprod: wallet-funded `deposit`, wallet `makeTransfer` of this token, and real-prover acceptance of identity-padded approval slots.
+
+## Security note — Schnorr challenge reduction (fixed 2026-10-03)
+
+Earlier builds of this contract (and of v2.6) let a prover choose the Schnorr challenge: the witness quotient `q` was an
+unbounded `Field`, so `q·2²⁴⁸ + c == cFull` held for any `c` and approvals could be forged from the signers' **public**
+keys alone (`tests/forgery.test.ts` reproduces the attack). The circuit now types `q` as `Uint<8>` and asserts
+`q <= 115`. `mint` / `contractWithdraw` also refuse the contract's own address on-chain.
+
+* **Contracts deployed before the fix must not be used** (their `mint`, `burn`, `contractWithdraw`,
+  `setEmergencyPauser`, `rotateSigner` verifier keys differ). The app detects them (`CONTRACT_VERSION`), forgets the
+  saved pointer and asks for a new deployment.
+* Trust assumptions that remain: the maintenance authority key (browser localStorage, `ft:sk:<address>`) can replace
+  verifier keys; the owner can pause and `emergencyWithdraw` contract-held tokens to the fixed treasury on their own.
