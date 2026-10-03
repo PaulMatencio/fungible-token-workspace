@@ -113,6 +113,20 @@ describe('end-to-end services on the simulator (v3)', () => {
     }
   });
 
+  it('setThreshold: validated, signed offline, applied, and enforced by the next operation', async () => {
+    const { gw, ms, approve } = await deployed();
+    const st = await gw.getState();
+    expect(() => ms.buildRequest(st, { type: 'setThreshold', threshold: '0' })).toThrow(/1, 2 or 3/);
+    expect(() => ms.buildRequest(st, { type: 'setThreshold', threshold: String(st.multisigThreshold) })).toThrow(/already/);
+    const raise = await approve({ type: 'setThreshold', threshold: '3' }, [0, 1]);
+    await ms.submit(raise.req, raise.approvals);
+    const after = await gw.getState();
+    expect(after.multisigThreshold).toBe(3);
+    expect(ms.requiredApprovals(after)).toBe(3);
+    const mint = await approve({ type: 'mint', to: ALICE, amount: '1' }, [0, 1]);
+    await expect(ms.submit(mint.req, mint.approvals)).rejects.toThrow(/Need 3 approvals/);
+  });
+
   it('lostTokens reports burnt tokens (all-zero address)', async () => {
     const { gw, ms, approve } = await deployed();
     const mint = await approve({ type: 'mint', to: ALICE, amount: '100' }, [0, 1]);

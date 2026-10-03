@@ -171,4 +171,35 @@ describe('FungibleToken v3 (native) — compiled circuits', () => {
     expect(t.call('setEmergencyPauser', np, pks, sigs)).toBe(true);
     expect(bytesToHex(t.L()._emergencyPauser)).toBe(bytesToHex(np));
   });
+
+  it('setThreshold changes the approvals required, by multisig', () => {
+    const t = setup(); // 2-of-3
+    const to = z(0x77);
+    const [p2, s2] = t.approvals(T.setThresholdDigest(addrBytes, t.nonce(), 3n), 2);
+    expect(t.call('setThreshold', 3n, p2, s2)).toBe(true);
+    expect(t.L()._multisigThreshold).toBe(3n);
+    // 2 approvals no longer enough for a mint; 3 are
+    const [pk2, sg2] = t.approvals(T.mintDigest(addrBytes, t.nonce(), to, 5n), 2);
+    expect(() => t.call('mint', to, 5n, pk2, sg2)).toThrow(/threshold not met/);
+    const [pk3, sg3] = t.approvals(T.mintDigest(addrBytes, t.nonce(), to, 5n), 3);
+    expect(t.call('mint', to, 5n, pk3, sg3)).toBe(true);
+    // all 3 can lower it to 1, after which a single approval suffices
+    const [p3, s3] = t.approvals(T.setThresholdDigest(addrBytes, t.nonce(), 1n), 3);
+    expect(t.call('setThreshold', 1n, p3, s3)).toBe(true);
+    const [pk1, sg1] = t.approvals(T.mintDigest(addrBytes, t.nonce(), to, 1n), 1);
+    expect(t.call('mint', to, 1n, pk1, sg1)).toBe(true);
+  });
+
+  it('setThreshold rejects out-of-range or unchanged values and forged approvals', () => {
+    const t = setup();
+    for (const bad of [0n, 4n]) {
+      const [pks, sigs] = t.approvals(T.setThresholdDigest(addrBytes, t.nonce(), bad), 2);
+      expect(() => t.call('setThreshold', bad, pks, sigs)).toThrow(/invalid threshold/);
+    }
+    const [pks, sigs] = t.approvals(T.setThresholdDigest(addrBytes, t.nonce(), 2n), 2);
+    expect(() => t.call('setThreshold', 2n, pks, sigs)).toThrow(/unchanged/);
+    // an approval for a different value does not authorize this one
+    const [pw, sw] = t.approvals(T.setThresholdDigest(addrBytes, t.nonce(), 1n), 2);
+    expect(() => t.call('setThreshold', 3n, pw, sw)).toThrow(/invalid signature/);
+  });
 });

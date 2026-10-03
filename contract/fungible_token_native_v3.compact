@@ -12,6 +12,7 @@
 //       contractWithdraw  (2-of-3 multisig)  contract-held balance -> a wallet
 //       emergencyWithdraw (owner, paused)    contract-held balance -> fixed treasury wallet
 //       setEmergencyPauser / rotateSigner    unchanged governance from v2.6
+//       setThreshold      (multisig)         change the approval threshold (1..3) without redeploying
 //       pause / unpause                      owner or emergency pauser
 //   * pause gates only contract-mediated actions (mint, deposit, contractWithdraw, burn). It CANNOT stop native
 //     wallet-to-wallet transfers: the contract is not in that path.
@@ -394,6 +395,35 @@ export circuit setEmergencyPauser(
   assertApprovals(msgHash, pubkeys, signatures);
 
   _emergencyPauser = disclose(newPauser);
+  return true;
+}
+
+/**
+ * Changes how many of the 3 registered signers must approve a governed operation (1..3). The signer count itself is
+ * fixed at 3 (see rotateSigner), so the threshold can never exceed it. Authorized by the CURRENT threshold.
+ * Like rotateSigner it is intentionally NOT gated by whenNotPaused(): it is a governance/recovery path.
+ * Message hash commits to ("multisig:set-threshold:", contractAddress, nonce, newThreshold).
+ */
+export circuit setThreshold(
+  newThreshold: Uint<8>,
+  pubkeys: Vector<3, JubjubPoint>,
+  signatures: Vector<3, SchnorrSignature>
+): Boolean {
+  assert(newThreshold >= 1 && newThreshold <= 3, "FungibleToken: invalid threshold");
+  assert(disclose(newThreshold) != _multisigThreshold, "FungibleToken: threshold unchanged");
+
+  const opNonce = _multisigNonce;
+  _multisigNonce.increment(1);
+
+  const msgHash = persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "multisig:set-threshold:"),
+    kernel.self().bytes,
+    opNonce as Bytes<32>,
+    newThreshold as Bytes<32>
+  ]);
+  assertApprovals(msgHash, pubkeys, signatures);
+
+  _multisigThreshold = disclose(newThreshold);
   return true;
 }
 

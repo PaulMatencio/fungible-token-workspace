@@ -15,7 +15,7 @@ const contract = new Contract({
 
 describe('fungible-token-native-v3 generated interface checks', () => {
   it('declares compiler 0.31.1 metadata', () => {
-    expect(meta.circuits.length).toBe(10);
+    expect(meta.circuits.length).toBe(11);
   });
 
   it('calculateSignerCommitment is exposed as a pure circuit with 2 argument(s)', () => {
@@ -56,6 +56,14 @@ describe('fungible-token-native-v3 generated interface checks', () => {
     expect(c!.pure).toBe(false);
     expect(c!.arguments).toHaveLength(3);
     expect(typeof contract.impureCircuits.setEmergencyPauser).toBe('function');
+  });
+
+  it('setThreshold is exposed as a impure circuit with 3 argument(s)', () => {
+    const c = meta.circuits.find((x) => x.name === 'setThreshold');
+    expect(c).toBeDefined();
+    expect(c!.pure).toBe(false);
+    expect(c!.arguments).toHaveLength(3);
+    expect(typeof contract.impureCircuits.setThreshold).toBe('function');
   });
 
   it('rotateSigner is exposed as a impure circuit with 5 argument(s)', () => {

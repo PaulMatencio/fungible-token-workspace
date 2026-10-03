@@ -63,7 +63,7 @@ button on the Overview tab resumes it. `npm run deploy:cost [-- --circuits a,b]`
 - The token is a **native Midnight unshielded token**; wallets hold and transfer it themselves (wallet → wallet needs no circuit).
 - Circuits: `mint` (multisig → wallet address), `burn` (multisig, contract-held tokens only), `deposit` (anyone: wallet → contract-held),
   `contractWithdraw` (multisig: contract-held → wallet), `emergencyWithdraw` (owner, paused → fixed `treasury` wallet),
-  `setEmergencyPauser`, `rotateSigner`, `pause`, `unpause`.
+  `setEmergencyPauser`, `setThreshold` (multisig: change the 1..3 approval threshold without redeploying), `rotateSigner`, `pause`, `unpause`.
 - `pause` gates only contract-mediated actions; it cannot stop native wallet-to-wallet transfers.
 - Unused approval slots use the identity point `(0,1)` (valid for the real prover), so threshold-2 needs only 2 signatures.
 - Tested through the real compiled circuits (`tests/native-v3.test.ts`); on-chain token movement still needs a preprod run.

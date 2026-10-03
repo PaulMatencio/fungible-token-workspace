@@ -172,6 +172,7 @@ export const fr: Record<MessageKey, string> = {
   'op.mint': 'Émettre',
   'op.burn': 'Brûler (trésorerie)',
   'op.setEmergencyPauser': 'Définir le responsable de pause',
+  'op.setThreshold': 'Modifier le seuil',
   'op.adminReallocate': 'Réallocation admin',
   'op.rotateSigner': 'Remplacer un signataire',
   'ms.title': 'Opération multisig',

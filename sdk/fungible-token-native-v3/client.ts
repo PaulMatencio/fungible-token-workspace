@@ -46,6 +46,11 @@ export class FungibleTokenNativeV3Client {
     return toTxData(await this.found.callTx.setEmergencyPauser(newPauser, pubkeys, signatures));
   }
 
+  /** Calls circuit `setThreshold`. */
+  async setThreshold(newThreshold: bigint, pubkeys: JubjubPoint[], signatures: SchnorrSignature[]): Promise<TxData> {
+    return toTxData(await this.found.callTx.setThreshold(newThreshold, pubkeys, signatures));
+  }
+
   /** Calls circuit `rotateSigner`. */
   async rotateSigner(oldSignerCommitment: Uint8Array, newSignerPubkey: JubjubPoint, newSignerPop: SchnorrSignature, pubkeys: JubjubPoint[], signatures: SchnorrSignature[]): Promise<TxData> {
     return toTxData(await this.found.callTx.rotateSigner(oldSignerCommitment, newSignerPubkey, newSignerPop, pubkeys, signatures));

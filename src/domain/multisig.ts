@@ -6,6 +6,7 @@ export type MultisigOp =
   | { type: 'burn'; value: string }
   | { type: 'contractWithdraw'; to: string; value: string }
   | { type: 'setEmergencyPauser'; newPauser: string }
+  | { type: 'setThreshold'; threshold: string }
   | { type: 'rotateSigner'; oldSignerCommitment: string; newSignerPubkey: JubjubPointJson };
 
 export interface SigningRequest {

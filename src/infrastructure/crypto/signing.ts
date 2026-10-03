@@ -98,6 +98,8 @@ export function computeDigest(req: SigningRequest): Uint8Array {
       return T.burnDigestV3(addr, nonce, parseUint(op.value, TWO_128, 'value'));
     case 'contractWithdraw':
       return T.withdrawDigest(addr, nonce, hex32ToBytes(op.to, 'to'), parseUint(op.value, TWO_128, 'value'));
+    case 'setThreshold':
+      return T.setThresholdDigest(addr, nonce, parseUint(op.threshold, 4n, 'threshold'));
     case 'setEmergencyPauser':
       return T.setEmergencyPauserDigest(addr, nonce, hex32ToBytes(op.newPauser, 'newPauser'));
     case 'rotateSigner':

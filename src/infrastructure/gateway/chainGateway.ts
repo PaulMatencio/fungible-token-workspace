@@ -372,6 +372,8 @@ export class ChainGateway implements TokenGateway {
         return this.call('burn', BigInt(op.value), pubkeys, signatures);
       case 'contractWithdraw':
         return this.call('contractWithdraw', hex32ToBytes(op.to, 'to'), BigInt(op.value), pubkeys, signatures);
+      case 'setThreshold':
+        return this.call('setThreshold', BigInt(op.threshold), pubkeys, signatures);
       case 'setEmergencyPauser':
         return this.call('setEmergencyPauser', hex32ToBytes(op.newPauser, 'newPauser'), pubkeys, signatures);
       case 'rotateSigner': {

@@ -22,6 +22,7 @@ const OPS: { type: OpType; label: MessageKey }[] = [
   { type: 'burn', label: 'op.burn' },
   { type: 'contractWithdraw', label: 'op.contractWithdraw' },
   { type: 'setEmergencyPauser', label: 'op.setEmergencyPauser' },
+  { type: 'setThreshold', label: 'op.setThreshold' },
   { type: 'rotateSigner', label: 'op.rotateSigner' }
 ];
 
@@ -30,6 +31,7 @@ const FIELDS: Record<OpType, { name: string; label: string; mono?: boolean; wall
   burn: [{ name: 'amount', label: 'Amount (burns contract-held tokens)' }],
   contractWithdraw: [{ name: 'to', label: 'Pay to wallet address (mn_addr_…)', mono: true, wallet: true }, { name: 'amount', label: 'Amount' }],
   setEmergencyPauser: [{ name: 'newPauser', label: 'New pauser (manager token account, 64 hex)', mono: true }],
+  setThreshold: [{ name: 'threshold', label: 'New threshold (1, 2 or 3 of 3 signers)' }],
   rotateSigner: [
     { name: 'oldSignerCommitment', label: 'Signer commitment to remove', mono: true },
     { name: 'newSignerPubkey', label: 'Incoming signer public key {"x","y"}', mono: true }

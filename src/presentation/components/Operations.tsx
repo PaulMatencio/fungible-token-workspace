@@ -105,7 +105,7 @@ export function OperationsTab() {
       <PauserOps />
       {canGovern && (
         <div className="lg:col-span-2">
-          <MultisigWizard allowed={['mint', 'burn', 'contractWithdraw', 'setEmergencyPauser', 'rotateSigner']} />
+          <MultisigWizard allowed={['mint', 'burn', 'contractWithdraw', 'setEmergencyPauser', 'setThreshold', 'rotateSigner']} />
         </div>
       )}
       {role.isCosigner && <RequestReview />}

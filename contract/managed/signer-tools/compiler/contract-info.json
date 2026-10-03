@@ -247,6 +247,38 @@
       }
     },
     {
+      "name": "setThresholdDigest",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "contractAddress",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "nonce",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        },
+        {
+          "name": "newThreshold",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 255
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
       "name": "adminReallocateDigest",
       "pure": true,
       "proof": false,

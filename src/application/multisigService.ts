@@ -19,6 +19,7 @@ export type OpInput =
   | { type: 'burn'; amount: string }
   | { type: 'contractWithdraw'; to: string; amount: string }
   | { type: 'setEmergencyPauser'; newPauser: string }
+  | { type: 'setThreshold'; threshold: string }
   | { type: 'rotateSigner'; oldSignerCommitment: string; newSignerPubkey: string };
 
 /**
@@ -54,6 +55,13 @@ export class MultisigService {
       case 'setEmergencyPauser':
         op = { type: 'setEmergencyPauser', newPauser: requireAccount(input.newPauser, 'New pauser (manager token account)') };
         break;
+      case 'setThreshold': {
+        const n = Number(input.threshold.trim());
+        if (!Number.isInteger(n) || n < 1 || n > 3) throw new AppError('VALIDATION', 'Threshold must be 1, 2 or 3 (the contract has 3 signers)');
+        if (n === state.multisigThreshold) throw new AppError('VALIDATION', `The threshold is already ${n}`);
+        op = { type: 'setThreshold', threshold: String(n) };
+        break;
+      }
       case 'rotateSigner': {
         const old = requireAccount(input.oldSignerCommitment, 'Old signer commitment');
         if (!state.signerCommitments.includes(old)) throw new AppError('VALIDATION', 'Old signer commitment is not registered');

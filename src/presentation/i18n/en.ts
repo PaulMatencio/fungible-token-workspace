@@ -170,6 +170,7 @@ export const en = {
   'op.mint': 'Mint',
   'op.burn': 'Burn (treasury)',
   'op.setEmergencyPauser': 'Set emergency pauser',
+  'op.setThreshold': 'Change threshold',
   'op.adminReallocate': 'Admin reallocate',
   'op.rotateSigner': 'Rotate signer',
   'ms.title': 'Multisig operation',

@@ -31,6 +31,9 @@ export type PureCircuits = {
   setEmergencyPauserDigest(contractAddress_0: Uint8Array,
                            nonce_0: bigint,
                            newPauser_0: Uint8Array): Uint8Array;
+  setThresholdDigest(contractAddress_0: Uint8Array,
+                     nonce_0: bigint,
+                     newThreshold_0: bigint): Uint8Array;
   adminReallocateDigest(contractAddress_0: Uint8Array,
                         nonce_0: bigint,
                         trappedAccount_0: Uint8Array,
@@ -77,6 +80,10 @@ export type Circuits<PS> = {
                            contractAddress_0: Uint8Array,
                            nonce_0: bigint,
                            newPauser_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  setThresholdDigest(context: __compactRuntime.CircuitContext<PS>,
+                     contractAddress_0: Uint8Array,
+                     nonce_0: bigint,
+                     newThreshold_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
   adminReallocateDigest(context: __compactRuntime.CircuitContext<PS>,
                         contractAddress_0: Uint8Array,
                         nonce_0: bigint,

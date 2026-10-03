@@ -9,57 +9,59 @@ const _descriptor_2 = new __compactRuntime.CompactTypeUnsignedInteger(3402823669
 
 const _descriptor_3 = __compactRuntime.CompactTypeJubjubPoint;
 
-const _descriptor_4 = __compactRuntime.CompactTypeField;
+const _descriptor_4 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
 
-const _descriptor_5 = __compactRuntime.CompactTypeBoolean;
+const _descriptor_5 = __compactRuntime.CompactTypeField;
 
-const _descriptor_6 = new __compactRuntime.CompactTypeVector(5, _descriptor_0);
+const _descriptor_6 = __compactRuntime.CompactTypeBoolean;
 
-const _descriptor_7 = new __compactRuntime.CompactTypeVector(2, _descriptor_0);
+const _descriptor_7 = new __compactRuntime.CompactTypeVector(5, _descriptor_0);
 
-const _descriptor_8 = new __compactRuntime.CompactTypeVector(6, _descriptor_0);
+const _descriptor_8 = new __compactRuntime.CompactTypeVector(2, _descriptor_0);
 
-const _descriptor_9 = new __compactRuntime.CompactTypeVector(4, _descriptor_0);
+const _descriptor_9 = new __compactRuntime.CompactTypeVector(6, _descriptor_0);
 
-const _descriptor_10 = new __compactRuntime.CompactTypeVector(1, _descriptor_4);
+const _descriptor_10 = new __compactRuntime.CompactTypeVector(4, _descriptor_0);
+
+const _descriptor_11 = new __compactRuntime.CompactTypeVector(1, _descriptor_5);
 
 class _SchnorrHashInput_0 {
   alignment() {
-    return _descriptor_4.alignment().concat(_descriptor_4.alignment().concat(_descriptor_4.alignment().concat(_descriptor_4.alignment().concat(_descriptor_10.alignment()))));
+    return _descriptor_5.alignment().concat(_descriptor_5.alignment().concat(_descriptor_5.alignment().concat(_descriptor_5.alignment().concat(_descriptor_11.alignment()))));
   }
   fromValue(value_0) {
     return {
-      ann_x: _descriptor_4.fromValue(value_0),
-      ann_y: _descriptor_4.fromValue(value_0),
-      pk_x: _descriptor_4.fromValue(value_0),
-      pk_y: _descriptor_4.fromValue(value_0),
-      msg: _descriptor_10.fromValue(value_0)
+      ann_x: _descriptor_5.fromValue(value_0),
+      ann_y: _descriptor_5.fromValue(value_0),
+      pk_x: _descriptor_5.fromValue(value_0),
+      pk_y: _descriptor_5.fromValue(value_0),
+      msg: _descriptor_11.fromValue(value_0)
     }
   }
   toValue(value_0) {
-    return _descriptor_4.toValue(value_0.ann_x).concat(_descriptor_4.toValue(value_0.ann_y).concat(_descriptor_4.toValue(value_0.pk_x).concat(_descriptor_4.toValue(value_0.pk_y).concat(_descriptor_10.toValue(value_0.msg)))));
+    return _descriptor_5.toValue(value_0.ann_x).concat(_descriptor_5.toValue(value_0.ann_y).concat(_descriptor_5.toValue(value_0.pk_x).concat(_descriptor_5.toValue(value_0.pk_y).concat(_descriptor_11.toValue(value_0.msg)))));
   }
 }
 
-const _descriptor_11 = new _SchnorrHashInput_0();
+const _descriptor_12 = new _SchnorrHashInput_0();
 
 class _Either_0 {
   alignment() {
-    return _descriptor_5.alignment().concat(_descriptor_0.alignment().concat(_descriptor_0.alignment()));
+    return _descriptor_6.alignment().concat(_descriptor_0.alignment().concat(_descriptor_0.alignment()));
   }
   fromValue(value_0) {
     return {
-      is_left: _descriptor_5.fromValue(value_0),
+      is_left: _descriptor_6.fromValue(value_0),
       left: _descriptor_0.fromValue(value_0),
       right: _descriptor_0.fromValue(value_0)
     }
   }
   toValue(value_0) {
-    return _descriptor_5.toValue(value_0.is_left).concat(_descriptor_0.toValue(value_0.left).concat(_descriptor_0.toValue(value_0.right)));
+    return _descriptor_6.toValue(value_0.is_left).concat(_descriptor_0.toValue(value_0.left).concat(_descriptor_0.toValue(value_0.right)));
   }
 }
 
-const _descriptor_12 = new _Either_0();
+const _descriptor_13 = new _Either_0();
 
 class _ContractAddress_0 {
   alignment() {
@@ -75,9 +77,7 @@ class _ContractAddress_0 {
   }
 }
 
-const _descriptor_13 = new _ContractAddress_0();
-
-const _descriptor_14 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
+const _descriptor_14 = new _ContractAddress_0();
 
 export class Contract {
   witnesses;
@@ -111,6 +111,9 @@ export class Contract {
       },
       setEmergencyPauserDigest(context, ...args_1) {
         return { result: pureCircuits.setEmergencyPauserDigest(...args_1), context };
+      },
+      setThresholdDigest(context, ...args_1) {
+        return { result: pureCircuits.setThresholdDigest(...args_1), context };
       },
       adminReallocateDigest(context, ...args_1) {
         return { result: pureCircuits.adminReallocateDigest(...args_1), context };
@@ -167,23 +170,23 @@ export class Contract {
     return result_0;
   }
   _transientHash_1(value_0) {
-    const result_0 = __compactRuntime.transientHash(_descriptor_11, value_0);
+    const result_0 = __compactRuntime.transientHash(_descriptor_12, value_0);
     return result_0;
   }
   _persistentHash_0(value_0) {
-    const result_0 = __compactRuntime.persistentHash(_descriptor_8, value_0);
-    return result_0;
-  }
-  _persistentHash_1(value_0) {
     const result_0 = __compactRuntime.persistentHash(_descriptor_9, value_0);
     return result_0;
   }
+  _persistentHash_1(value_0) {
+    const result_0 = __compactRuntime.persistentHash(_descriptor_10, value_0);
+    return result_0;
+  }
   _persistentHash_2(value_0) {
-    const result_0 = __compactRuntime.persistentHash(_descriptor_6, value_0);
+    const result_0 = __compactRuntime.persistentHash(_descriptor_7, value_0);
     return result_0;
   }
   _persistentHash_3(value_0) {
-    const result_0 = __compactRuntime.persistentHash(_descriptor_7, value_0);
+    const result_0 = __compactRuntime.persistentHash(_descriptor_8, value_0);
     return result_0;
   }
   _jubjubPointX_0(np_0) {
@@ -262,6 +265,16 @@ export class Contract {
                                                                         'signer-tools.compact line 121 char 5'),
                                    newPauser_0]);
   }
+  _setThresholdDigest_0(contractAddress_0, nonce_0, newThreshold_0) {
+    return this._persistentHash_1([new Uint8Array([109, 117, 108, 116, 105, 115, 105, 103, 58, 115, 101, 116, 45, 116, 104, 114, 101, 115, 104, 111, 108, 100, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+                                   contractAddress_0,
+                                   __compactRuntime.convertFieldToBytes(32,
+                                                                        nonce_0,
+                                                                        'signer-tools.compact line 134 char 5'),
+                                   __compactRuntime.convertFieldToBytes(32,
+                                                                        newThreshold_0,
+                                                                        'signer-tools.compact line 135 char 5')]);
+  }
   _adminReallocateDigest_0(contractAddress_0,
                            nonce_0,
                            trappedAccount_0,
@@ -272,12 +285,12 @@ export class Contract {
                                    contractAddress_0,
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         nonce_0,
-                                                                        'signer-tools.compact line 136 char 5'),
+                                                                        'signer-tools.compact line 149 char 5'),
                                    trappedAccount_0,
                                    targetSpendableAccount_0,
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         amount_0,
-                                                                        'signer-tools.compact line 139 char 5')]);
+                                                                        'signer-tools.compact line 152 char 5')]);
   }
   _rotateSignerDigest_0(contractAddress_0,
                         nonce_0,
@@ -291,7 +304,7 @@ export class Contract {
                                    contractAddress_0,
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         nonce_0,
-                                                                        'signer-tools.compact line 156 char 5'),
+                                                                        'signer-tools.compact line 169 char 5'),
                                    oldSignerCommitment_0,
                                    newSignerCommitment_0]);
   }
@@ -300,21 +313,21 @@ export class Contract {
                                    contractAddress_0,
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         nonce_0,
-                                                                        'signer-tools.compact line 169 char 5'),
+                                                                        'signer-tools.compact line 182 char 5'),
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         value_0,
-                                                                        'signer-tools.compact line 170 char 5')]);
+                                                                        'signer-tools.compact line 183 char 5')]);
   }
   _withdrawDigest_0(contractAddress_0, nonce_0, to_0, value_0) {
     return this._persistentHash_2([new Uint8Array([109, 117, 108, 116, 105, 115, 105, 103, 58, 119, 105, 116, 104, 100, 114, 97, 119, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
                                    contractAddress_0,
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         nonce_0,
-                                                                        'signer-tools.compact line 179 char 5'),
+                                                                        'signer-tools.compact line 192 char 5'),
                                    to_0,
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         value_0,
-                                                                        'signer-tools.compact line 181 char 5')]);
+                                                                        'signer-tools.compact line 194 char 5')]);
   }
   _rotatePopDigest_0(msgHash_0) {
     return this._persistentHash_3([new Uint8Array([109, 117, 108, 116, 105, 115, 105, 103, 58, 114, 111, 116, 97, 116, 101, 45, 112, 111, 112, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
@@ -528,6 +541,38 @@ export const pureCircuits = {
                                                       nonce_0,
                                                       newPauser_0);
   },
+  setThresholdDigest: (...args_0) => {
+    if (args_0.length !== 3) {
+      throw new __compactRuntime.CompactError(`setThresholdDigest: expected 3 arguments (as invoked from Typescript), received ${args_0.length}`);
+    }
+    const contractAddress_0 = args_0[0];
+    const nonce_0 = args_0[1];
+    const newThreshold_0 = args_0[2];
+    if (!(contractAddress_0.buffer instanceof ArrayBuffer && contractAddress_0.BYTES_PER_ELEMENT === 1 && contractAddress_0.length === 32)) {
+      __compactRuntime.typeError('setThresholdDigest',
+                                 'argument 1',
+                                 'signer-tools.compact line 126 char 1',
+                                 'Bytes<32>',
+                                 contractAddress_0)
+    }
+    if (!(typeof(nonce_0) === 'bigint' && nonce_0 >= 0n && nonce_0 <= 18446744073709551615n)) {
+      __compactRuntime.typeError('setThresholdDigest',
+                                 'argument 2',
+                                 'signer-tools.compact line 126 char 1',
+                                 'Uint<0..18446744073709551616>',
+                                 nonce_0)
+    }
+    if (!(typeof(newThreshold_0) === 'bigint' && newThreshold_0 >= 0n && newThreshold_0 <= 255n)) {
+      __compactRuntime.typeError('setThresholdDigest',
+                                 'argument 3',
+                                 'signer-tools.compact line 126 char 1',
+                                 'Uint<0..256>',
+                                 newThreshold_0)
+    }
+    return _dummyContract._setThresholdDigest_0(contractAddress_0,
+                                                nonce_0,
+                                                newThreshold_0);
+  },
   adminReallocateDigest: (...args_0) => {
     if (args_0.length !== 5) {
       throw new __compactRuntime.CompactError(`adminReallocateDigest: expected 5 arguments (as invoked from Typescript), received ${args_0.length}`);
@@ -540,35 +585,35 @@ export const pureCircuits = {
     if (!(contractAddress_0.buffer instanceof ArrayBuffer && contractAddress_0.BYTES_PER_ELEMENT === 1 && contractAddress_0.length === 32)) {
       __compactRuntime.typeError('adminReallocateDigest',
                                  'argument 1',
-                                 'signer-tools.compact line 126 char 1',
+                                 'signer-tools.compact line 139 char 1',
                                  'Bytes<32>',
                                  contractAddress_0)
     }
     if (!(typeof(nonce_0) === 'bigint' && nonce_0 >= 0n && nonce_0 <= 18446744073709551615n)) {
       __compactRuntime.typeError('adminReallocateDigest',
                                  'argument 2',
-                                 'signer-tools.compact line 126 char 1',
+                                 'signer-tools.compact line 139 char 1',
                                  'Uint<0..18446744073709551616>',
                                  nonce_0)
     }
     if (!(trappedAccount_0.buffer instanceof ArrayBuffer && trappedAccount_0.BYTES_PER_ELEMENT === 1 && trappedAccount_0.length === 32)) {
       __compactRuntime.typeError('adminReallocateDigest',
                                  'argument 3',
-                                 'signer-tools.compact line 126 char 1',
+                                 'signer-tools.compact line 139 char 1',
                                  'Bytes<32>',
                                  trappedAccount_0)
     }
     if (!(targetSpendableAccount_0.buffer instanceof ArrayBuffer && targetSpendableAccount_0.BYTES_PER_ELEMENT === 1 && targetSpendableAccount_0.length === 32)) {
       __compactRuntime.typeError('adminReallocateDigest',
                                  'argument 4',
-                                 'signer-tools.compact line 126 char 1',
+                                 'signer-tools.compact line 139 char 1',
                                  'Bytes<32>',
                                  targetSpendableAccount_0)
     }
     if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 340282366920938463463374607431768211455n)) {
       __compactRuntime.typeError('adminReallocateDigest',
                                  'argument 5',
-                                 'signer-tools.compact line 126 char 1',
+                                 'signer-tools.compact line 139 char 1',
                                  'Uint<0..340282366920938463463374607431768211456>',
                                  amount_0)
     }
@@ -590,28 +635,28 @@ export const pureCircuits = {
     if (!(contractAddress_0.buffer instanceof ArrayBuffer && contractAddress_0.BYTES_PER_ELEMENT === 1 && contractAddress_0.length === 32)) {
       __compactRuntime.typeError('rotateSignerDigest',
                                  'argument 1',
-                                 'signer-tools.compact line 145 char 1',
+                                 'signer-tools.compact line 158 char 1',
                                  'Bytes<32>',
                                  contractAddress_0)
     }
     if (!(typeof(nonce_0) === 'bigint' && nonce_0 >= 0n && nonce_0 <= 18446744073709551615n)) {
       __compactRuntime.typeError('rotateSignerDigest',
                                  'argument 2',
-                                 'signer-tools.compact line 145 char 1',
+                                 'signer-tools.compact line 158 char 1',
                                  'Uint<0..18446744073709551616>',
                                  nonce_0)
     }
     if (!(oldSignerCommitment_0.buffer instanceof ArrayBuffer && oldSignerCommitment_0.BYTES_PER_ELEMENT === 1 && oldSignerCommitment_0.length === 32)) {
       __compactRuntime.typeError('rotateSignerDigest',
                                  'argument 3',
-                                 'signer-tools.compact line 145 char 1',
+                                 'signer-tools.compact line 158 char 1',
                                  'Bytes<32>',
                                  oldSignerCommitment_0)
     }
     if (!(contractSalt_0.buffer instanceof ArrayBuffer && contractSalt_0.BYTES_PER_ELEMENT === 1 && contractSalt_0.length === 32)) {
       __compactRuntime.typeError('rotateSignerDigest',
                                  'argument 5',
-                                 'signer-tools.compact line 145 char 1',
+                                 'signer-tools.compact line 158 char 1',
                                  'Bytes<32>',
                                  contractSalt_0)
     }
@@ -631,21 +676,21 @@ export const pureCircuits = {
     if (!(contractAddress_0.buffer instanceof ArrayBuffer && contractAddress_0.BYTES_PER_ELEMENT === 1 && contractAddress_0.length === 32)) {
       __compactRuntime.typeError('burnDigestV3',
                                  'argument 1',
-                                 'signer-tools.compact line 165 char 1',
+                                 'signer-tools.compact line 178 char 1',
                                  'Bytes<32>',
                                  contractAddress_0)
     }
     if (!(typeof(nonce_0) === 'bigint' && nonce_0 >= 0n && nonce_0 <= 18446744073709551615n)) {
       __compactRuntime.typeError('burnDigestV3',
                                  'argument 2',
-                                 'signer-tools.compact line 165 char 1',
+                                 'signer-tools.compact line 178 char 1',
                                  'Uint<0..18446744073709551616>',
                                  nonce_0)
     }
     if (!(typeof(value_0) === 'bigint' && value_0 >= 0n && value_0 <= 340282366920938463463374607431768211455n)) {
       __compactRuntime.typeError('burnDigestV3',
                                  'argument 3',
-                                 'signer-tools.compact line 165 char 1',
+                                 'signer-tools.compact line 178 char 1',
                                  'Uint<0..340282366920938463463374607431768211456>',
                                  value_0)
     }
@@ -662,28 +707,28 @@ export const pureCircuits = {
     if (!(contractAddress_0.buffer instanceof ArrayBuffer && contractAddress_0.BYTES_PER_ELEMENT === 1 && contractAddress_0.length === 32)) {
       __compactRuntime.typeError('withdrawDigest',
                                  'argument 1',
-                                 'signer-tools.compact line 175 char 1',
+                                 'signer-tools.compact line 188 char 1',
                                  'Bytes<32>',
                                  contractAddress_0)
     }
     if (!(typeof(nonce_0) === 'bigint' && nonce_0 >= 0n && nonce_0 <= 18446744073709551615n)) {
       __compactRuntime.typeError('withdrawDigest',
                                  'argument 2',
-                                 'signer-tools.compact line 175 char 1',
+                                 'signer-tools.compact line 188 char 1',
                                  'Uint<0..18446744073709551616>',
                                  nonce_0)
     }
     if (!(to_0.buffer instanceof ArrayBuffer && to_0.BYTES_PER_ELEMENT === 1 && to_0.length === 32)) {
       __compactRuntime.typeError('withdrawDigest',
                                  'argument 3',
-                                 'signer-tools.compact line 175 char 1',
+                                 'signer-tools.compact line 188 char 1',
                                  'Bytes<32>',
                                  to_0)
     }
     if (!(typeof(value_0) === 'bigint' && value_0 >= 0n && value_0 <= 340282366920938463463374607431768211455n)) {
       __compactRuntime.typeError('withdrawDigest',
                                  'argument 4',
-                                 'signer-tools.compact line 175 char 1',
+                                 'signer-tools.compact line 188 char 1',
                                  'Uint<0..340282366920938463463374607431768211456>',
                                  value_0)
     }
@@ -700,7 +745,7 @@ export const pureCircuits = {
     if (!(msgHash_0.buffer instanceof ArrayBuffer && msgHash_0.BYTES_PER_ELEMENT === 1 && msgHash_0.length === 32)) {
       __compactRuntime.typeError('rotatePopDigest',
                                  'argument 1',
-                                 'signer-tools.compact line 185 char 1',
+                                 'signer-tools.compact line 198 char 1',
                                  'Bytes<32>',
                                  msgHash_0)
     }

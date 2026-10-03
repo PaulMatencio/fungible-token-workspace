@@ -29,6 +29,10 @@ export type ImpureCircuits<PS> = {
                      newPauser_0: Uint8Array,
                      pubkeys_0: __compactRuntime.JubjubPoint[],
                      signatures_0: SchnorrSignature[]): __compactRuntime.CircuitResults<PS, boolean>;
+  setThreshold(context: __compactRuntime.CircuitContext<PS>,
+               newThreshold_0: bigint,
+               pubkeys_0: __compactRuntime.JubjubPoint[],
+               signatures_0: SchnorrSignature[]): __compactRuntime.CircuitResults<PS, boolean>;
   rotateSigner(context: __compactRuntime.CircuitContext<PS>,
                oldSignerCommitment_0: Uint8Array,
                newSignerPubkey_0: __compactRuntime.JubjubPoint,
@@ -62,6 +66,10 @@ export type ProvableCircuits<PS> = {
                      newPauser_0: Uint8Array,
                      pubkeys_0: __compactRuntime.JubjubPoint[],
                      signatures_0: SchnorrSignature[]): __compactRuntime.CircuitResults<PS, boolean>;
+  setThreshold(context: __compactRuntime.CircuitContext<PS>,
+               newThreshold_0: bigint,
+               pubkeys_0: __compactRuntime.JubjubPoint[],
+               signatures_0: SchnorrSignature[]): __compactRuntime.CircuitResults<PS, boolean>;
   rotateSigner(context: __compactRuntime.CircuitContext<PS>,
                oldSignerCommitment_0: Uint8Array,
                newSignerPubkey_0: __compactRuntime.JubjubPoint,
@@ -103,6 +111,10 @@ export type Circuits<PS> = {
                      newPauser_0: Uint8Array,
                      pubkeys_0: __compactRuntime.JubjubPoint[],
                      signatures_0: SchnorrSignature[]): __compactRuntime.CircuitResults<PS, boolean>;
+  setThreshold(context: __compactRuntime.CircuitContext<PS>,
+               newThreshold_0: bigint,
+               pubkeys_0: __compactRuntime.JubjubPoint[],
+               signatures_0: SchnorrSignature[]): __compactRuntime.CircuitResults<PS, boolean>;
   rotateSigner(context: __compactRuntime.CircuitContext<PS>,
                oldSignerCommitment_0: Uint8Array,
                newSignerPubkey_0: __compactRuntime.JubjubPoint,

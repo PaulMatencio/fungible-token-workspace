@@ -295,6 +295,68 @@
       }
     },
     {
+      "name": "setThreshold",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "newThreshold",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 255
+          }
+        },
+        {
+          "name": "pubkeys",
+          "type": {
+            "type-name": "Vector",
+            "length": 3,
+            "type": {
+              "type-name": "Alias",
+              "name": "JubjubPoint",
+              "type": {
+                "type-name": "Opaque",
+                "tsType": "JubjubPoint"
+              }
+            }
+          }
+        },
+        {
+          "name": "signatures",
+          "type": {
+            "type-name": "Vector",
+            "length": 3,
+            "type": {
+              "type-name": "Struct",
+              "name": "SchnorrSignature",
+              "elements": [
+                {
+                  "name": "announcement",
+                  "type": {
+                    "type-name": "Alias",
+                    "name": "JubjubPoint",
+                    "type": {
+                      "type-name": "Opaque",
+                      "tsType": "JubjubPoint"
+                    }
+                  }
+                },
+                {
+                  "name": "response",
+                  "type": {
+                    "type-name": "Field"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Boolean"
+      }
+    },
+    {
       "name": "rotateSigner",
       "pure": false,
       "proof": true,

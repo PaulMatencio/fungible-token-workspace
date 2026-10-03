@@ -220,6 +220,8 @@ export class SimulatorGateway implements TokenGateway {
             return k.burn(x, BigInt(op.value), pubkeys, signatures);
           case 'contractWithdraw':
             return k.contractWithdraw(x, hex32ToBytes(op.to, 'to'), BigInt(op.value), pubkeys, signatures);
+          case 'setThreshold':
+            return k.setThreshold(x, BigInt(op.threshold), pubkeys, signatures);
           case 'setEmergencyPauser':
             return k.setEmergencyPauser(x, hex32ToBytes(op.newPauser, 'newPauser'), pubkeys, signatures);
           case 'rotateSigner': {

@@ -42,6 +42,7 @@ export type CircuitName =
   | 'burn'
   | 'contractWithdraw'
   | 'setEmergencyPauser'
+  | 'setThreshold'
   | 'rotateSigner'
   | 'pause'
   | 'unpause'
@@ -76,6 +77,7 @@ export const CIRCUITS: readonly CircuitSpec[] = [
   { name: 'burn', authority: 'multisig', roles: ['manager', 'cosigner'], labelKey: 'op.burn' },
   { name: 'contractWithdraw', authority: 'multisig', roles: ['manager', 'cosigner'], labelKey: 'op.contractWithdraw' },
   { name: 'setEmergencyPauser', authority: 'multisig', roles: ['manager', 'cosigner'], labelKey: 'op.setEmergencyPauser' },
+  { name: 'setThreshold', authority: 'multisig', roles: ['manager', 'cosigner'], labelKey: 'op.setThreshold' },
   { name: 'rotateSigner', authority: 'multisig', roles: ['manager', 'cosigner'], labelKey: 'op.rotateSigner' }
 ];
 

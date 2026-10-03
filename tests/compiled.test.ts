@@ -45,7 +45,7 @@ describe('staged deploy', () => {
     const { allCircuitIds, makeCompiledContract } = await import('@/infrastructure/contract/compiled');
     const { contractConfig } = await import('@/infrastructure/config/network');
     const all = allCircuitIds();
-    expect(all).toHaveLength(9);
+    expect(all).toHaveLength(10);
     expect(contractConfig.deployCircuits.length).toBeLessThan(all.length);
     for (const c of contractConfig.deployCircuits) expect(all).toContain(c);
     expect(makeCompiledContract(() => new Uint8Array(32), contractConfig.deployCircuits)).toBeTruthy();

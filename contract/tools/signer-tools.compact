@@ -123,6 +123,19 @@ export pure circuit setEmergencyPauserDigest(
   ]);
 }
 
+export pure circuit setThresholdDigest(
+  contractAddress: Bytes<32>,
+  nonce: Uint<64>,
+  newThreshold: Uint<8>
+): Bytes<32> {
+  return persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "multisig:set-threshold:"),
+    contractAddress,
+    nonce as Bytes<32>,
+    newThreshold as Bytes<32>
+  ]);
+}
+
 export pure circuit adminReallocateDigest(
   contractAddress: Bytes<32>,
   nonce: Uint<64>,
