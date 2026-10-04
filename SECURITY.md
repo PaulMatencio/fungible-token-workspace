@@ -31,7 +31,7 @@ test that reproduces it. You can expect an acknowledgement within a few days.
 ## Content-Security-Policy
 `next.config.mjs` sends a CSP: scripts from the app only (`'unsafe-inline'` remains for Next.js's inline bootstrap, and
 `'wasm-unsafe-eval'` for the Midnight WASM runtime), `connect-src` limited to the app, the configured indexer/node, the
-Midnight and 1AM hosts and the local proof server, `object-src 'none'`, `frame-ancestors 'none'`. If a wallet is
+Midnight, 1AM and Blockfrost hosts (wallets may report any of them as their indexer) and the local proof server, `object-src 'none'`, `frame-ancestors 'none'`. If a wallet is
 configured with an indexer on another host the browser console shows a `connect-src` violation: add the host with
 `CSP_CONNECT_EXTRA="https://host wss://host"`, or set `CSP_REPORT_ONLY=1` to log violations without blocking.
 

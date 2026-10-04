@@ -9,7 +9,7 @@ const dev = process.env.NODE_ENV !== 'production';
 
 /**
  * Content-Security-Policy. The page talks to: its own origin (incl. /zk circuit keys), the indexer (HTTP + WebSocket —
- * the wallet supplies these URIs, so the Midnight and 1AM hosts are allowed as well as the configured ones) and the
+ * the wallet supplies these URIs, so the Midnight, 1AM and Blockfrost hosts are allowed as well as the configured ones) and the
  * LOCAL proof server. Anything else (exfiltration to an unknown host) is refused. Add hosts with
  * CSP_CONNECT_EXTRA="https://host wss://host"; set CSP_REPORT_ONLY=1 to log violations without blocking.
  * 'unsafe-inline' scripts remain because Next.js emits inline bootstrap scripts (a nonce would need dynamic rendering);
@@ -22,6 +22,7 @@ function contentSecurityPolicy() {
     origin(midnight.indexer), origin(midnight.indexerWS), origin(midnight.nodeRpc), origin(midnight.proofServer),
     'http://127.0.0.1:6300', 'http://localhost:6300',
     'https://*.midnight.network', 'wss://*.midnight.network', 'https://*.1am.xyz', 'wss://*.1am.xyz',
+    'https://*.blockfrost.io', 'wss://*.blockfrost.io', // Lace can report Blockfrost's Midnight service as its indexer
     ...(process.env.CSP_CONNECT_EXTRA ?? '').split(/\s+/).filter(Boolean)
   ]);
   if (dev) { connect.add('ws://localhost:*'); connect.add('ws://127.0.0.1:*'); } // Next.js hot reload
