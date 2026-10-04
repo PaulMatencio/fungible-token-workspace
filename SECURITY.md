@@ -28,5 +28,12 @@ test that reproduces it. You can expect an acknowledgement within a few days.
 * **Tooling API** (`/api/tooling`) spawns local processes. It is loopback and same-origin only and disabled in production
   unless `MIDNIGHT_TOOLING=1`; never enable that on a publicly reachable host.
 
+## Content-Security-Policy
+`next.config.mjs` sends a CSP: scripts from the app only (`'unsafe-inline'` remains for Next.js's inline bootstrap, and
+`'wasm-unsafe-eval'` for the Midnight WASM runtime), `connect-src` limited to the app, the configured indexer/node, the
+Midnight and 1AM hosts and the local proof server, `object-src 'none'`, `frame-ancestors 'none'`. If a wallet is
+configured with an indexer on another host the browser console shows a `connect-src` violation: add the host with
+`CSP_CONNECT_EXTRA="https://host wss://host"`, or set `CSP_REPORT_ONLY=1` to log violations without blocking.
+
 ## Never commit
 Key files, approval/request files, `.env*`, `*.prover` proving keys (large, regenerable) and wallet seed phrases.
