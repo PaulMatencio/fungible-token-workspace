@@ -68,6 +68,40 @@ async function stage<T>(name: string, fn: () => Promise<T>): Promise<T> {
 
 export type AppProviders = MidnightProviders<string, string, unknown>;
 
+type Pdp = ReturnType<typeof indexerPublicDataProvider>;
+
+/**
+ * Indexer reads with a fallback. Wallets report their own indexer, and not all of them index the same data (Lace in
+ * Brave reports Blockfrost's Midnight service; 1AM reports its own): contract state and history can be missing there
+ * even though the contract exists. The configured indexer (`midnight.config.json`) is tried first; the wallet's is the
+ * fallback. Lookups return the first non-empty answer; "watch" promises resolve with whichever indexer sees the data first.
+ */
+export function withFallback(primary: Pdp, fallback: Pdp): Pdp {
+  const first = async <T,>(a: () => Promise<T>, b: () => Promise<T>): Promise<T> => {
+    try {
+      const r = await a();
+      if (r !== null && r !== undefined) return r;
+    } catch {
+      /* fall through to the wallet's indexer */
+    }
+    return b();
+  };
+  const overrides: Record<string, (...args: never[]) => unknown> = {
+    queryContractState: (...a: never[]) => first(() => (primary.queryContractState as never as (...x: never[]) => Promise<unknown>)(...a), () => (fallback.queryContractState as never as (...x: never[]) => Promise<unknown>)(...a)),
+    queryUnshieldedBalances: (...a: never[]) => first(() => (primary.queryUnshieldedBalances as never as (...x: never[]) => Promise<unknown>)(...a), () => (fallback.queryUnshieldedBalances as never as (...x: never[]) => Promise<unknown>)(...a)),
+    queryDeployContractState: (...a: never[]) => first(() => (primary.queryDeployContractState as never as (...x: never[]) => Promise<unknown>)(...a), () => (fallback.queryDeployContractState as never as (...x: never[]) => Promise<unknown>)(...a)),
+    watchForTxData: (...a: never[]) => Promise.any([(primary.watchForTxData as never as (...x: never[]) => Promise<unknown>)(...a), (fallback.watchForTxData as never as (...x: never[]) => Promise<unknown>)(...a)]),
+    watchForDeployTxData: (...a: never[]) => Promise.any([(primary.watchForDeployTxData as never as (...x: never[]) => Promise<unknown>)(...a), (fallback.watchForDeployTxData as never as (...x: never[]) => Promise<unknown>)(...a)])
+  };
+  return new Proxy(primary, {
+    get(target, prop, receiver) {
+      if (typeof prop === 'string' && prop in overrides) return overrides[prop];
+      const v = Reflect.get(target, prop, receiver);
+      return typeof v === 'function' ? v.bind(target) : v;
+    }
+  });
+}
+
 /**
  * Assembles midnight-js providers from a connected wallet. Endpoints come from
  * the wallet's own configuration (respects the user's network choice); the
@@ -78,7 +112,11 @@ export async function createWalletProviders(session: WalletSession, store: KeyVa
   const cfg = await api.getConfiguration();
   setNetworkId(cfg.networkId);
 
-  const publicDataProvider = indexerPublicDataProvider(cfg.indexerUri, cfg.indexerWsUri);
+  const walletIndexer = indexerPublicDataProvider(cfg.indexerUri, cfg.indexerWsUri);
+  const publicDataProvider =
+    cfg.networkId === networkConfig.networkId
+      ? withFallback(indexerPublicDataProvider(networkConfig.indexer, networkConfig.indexerWS), walletIndexer)
+      : walletIndexer;
   const zkConfigProvider = new FetchZkConfigProvider<string>(`${window.location.origin}${ZK_ASSET_PATH}`, fetch.bind(window));
   // Proving always uses the LOCAL proof server from midnight.config.json — never the wallet's hosted one
   // (cfg.proverServerUri). A proof request carries the circuit's private inputs (witnesses such as the token
