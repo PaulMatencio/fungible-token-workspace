@@ -8,7 +8,7 @@ import { AppError, compactText, deepMessage } from '@/domain/errors';
 import { bytesToHex, hex32ToBytes } from '@/domain/hex';
 import type { ApprovalFile, MultisigOp } from '@/domain/multisig';
 import type { TokenState, TxReceipt } from '@/domain/token';
-import { contractConfig } from '../config/network';
+import { contractConfig, networkConfig } from '../config/network';
 import { allCircuitIds, makeCompiledContract } from '../contract/compiled';
 import { ledger } from '../contract/module';
 import { pointFromJson, randomBytes } from '../crypto/signing';
@@ -258,14 +258,30 @@ export class ChainGateway implements TokenGateway {
     throw new AppError('CONTRACT_REJECTED', `Registering “${circuit}” was not confirmed on-chain within ${Math.round(timeoutMs / 60_000)} minutes. Check your wallet's history for a pending transaction, then use “Register remaining circuits” again.`);
   }
 
+  /** Indexer WebSocket URLs to try for history/UTXO reads: the configured one (same network), then the wallet's. */
+  private indexerWsCandidates(walletWs: string): string[] {
+    const own = this.wallet.networkId === networkConfig.networkId ? [networkConfig.indexerWS] : [];
+    return [...new Set([...own, walletWs])];
+  }
+
   /** Every deploy / maintenance / call of this contract as recorded by the indexer, as history rows. */
   async chainHistory(): Promise<TxLogEntry[]> {
     const cfg = await this.wallet.api.getConfiguration();
-    let actions;
-    try {
-      actions = await fetchContractHistory(cfg.indexerWsUri, this.contractAddress);
-    } catch (e) {
-      throw new AppError('CONTRACT_REJECTED', `Could not read the contract history from the indexer (${cfg.indexerWsUri}): ${describeError(e)}`, { cause: e });
+    // The configured indexer first: wallets may report other services (Lace in Brave reports Blockfrost's, which
+    // connects but returns no contract actions), so the wallet's is only a fallback.
+    const urls = this.indexerWsCandidates(cfg.indexerWsUri);
+    let actions: Awaited<ReturnType<typeof fetchContractHistory>> = [];
+    let lastError: unknown;
+    for (const url of urls) {
+      try {
+        actions = await fetchContractHistory(url, this.contractAddress);
+        if (actions.length > 0) break;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    if (actions.length === 0 && lastError) {
+      throw new AppError('CONTRACT_REJECTED', `Could not read the contract history from the indexer (${urls.join(', ')}): ${describeError(lastError)}`, { cause: lastError });
     }
     return actions.map((a) => ({
       id: `${a.txHash}:${a.circuit}`,
@@ -329,7 +345,15 @@ export class ChainGateway implements TokenGateway {
     try {
       const cfg = await this.wallet.api.getConfiguration();
       const bech = await hexToWalletAddress(address, this.wallet.networkId);
-      return await indexerUnshieldedBalance(cfg.indexerWsUri, bech, color);
+      let last: unknown;
+      for (const url of this.indexerWsCandidates(cfg.indexerWsUri)) {
+        try {
+          return await indexerUnshieldedBalance(url, bech, color);
+        } catch (e) {
+          last = e;
+        }
+      }
+      throw last;
     } catch (e) {
       if (!own) throw new AppError('CONTRACT_REJECTED', `Could not read the balance from the indexer: ${describeError(e)}`, { cause: e });
       console.warn('[balance] indexer UTXO read failed, using wallet API', e);
