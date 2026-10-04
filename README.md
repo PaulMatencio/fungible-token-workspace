@@ -82,3 +82,11 @@ keys alone (`tests/forgery.test.ts` reproduces the attack). The circuit now type
   saved pointer and asks for a new deployment.
 * Trust assumptions that remain: the maintenance authority key (browser localStorage, `ft:sk:<address>`) can replace
   verifier keys; the owner can pause and `emergencyWithdraw` contract-held tokens to the fixed treasury on their own.
+
+## Encrypted key backup
+
+**Identity** card → *Encrypted backup*: downloads a passphrase-protected JSON file (scrypt N=2¹⁷ r=8 p=1 → AES-256-GCM, the
+same scheme as the signer-tool key files, metadata bound as AAD) holding the identity secret key and, when this browser
+has it, the open contract's authority key. *Restore* decrypts a file and re-imports both (a replaced key is kept under
+`…:replaced:<timestamp>`). Minimum passphrase length 12; the passphrase cannot be recovered. See
+`src/infrastructure/crypto/keyBackup.ts`.
