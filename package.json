@@ -15,7 +15,8 @@
     "compile:contract": "node scripts/compile.mjs contract",
     "compile:tools": "node scripts/compile.mjs tools",
     "deploy:cost": "node scripts/deploy-cost.mjs",
-    "check:contract": "node scripts/check-contract.mjs"
+    "check:contract": "node scripts/check-contract.mjs",
+    "verify:manager-key": "node scripts/verify-manager-key.mjs"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.16.0",
