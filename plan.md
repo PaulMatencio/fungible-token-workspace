@@ -1,168 +1,129 @@
-# Midnight Network DApp Frontend Architecture Prompt: FungibleTokenV2_2
+# Plan — FungibleToken (native, v3) Midnight DApp
 
-You are an expert full-stack Web3 engineer and UI/UX designer specializing in the **Midnight Network**, the **Compact smart contract runtime**, modern **React 19 / Next.js 15+ (App Router)** frontend engineering, and world-class **UI/UX design**.
+> Status: **v3 implemented and verified on preprod** (every circuit has run on-chain). This file replaces the original
+> v2.6 brief. The v2.6 front end and contract live in their own repository (`fungible-token-workspace-v2.6`, legacy,
+> has the Schnorr flaw fixed in v3). Design details: [design.md](design.md). Policy: [SECURITY.md](SECURITY.md).
 
-A Midnight Compact smart contract called **`fungible-token-v2.6.compact`** has been compiled, tested, and deployed to the **preprod** network. All relevant contract artifacts, compiled TypeScript definitions, ZKIR circuit bytecodes, client SDK adapters, and deployment configurations are provided in this directory.
+## Primary goal
+Maintain a **React 19 / Next.js 15 (App Router)** DApp in this directory that compiles, tests, deploys and operates
+`contract/fungible_token_native_v3.compact` on **Midnight preprod**: a **native unshielded token** whose issuance and
+treasury are governed by an **offline k-of-3 multisig**.
 
+## Stack
+* React 19, Next.js 15 (App Router), TypeScript, Tailwind (midnight theme), vitest
+* Compact compiler **0.31.1** ↔ compact-runtime 0.16.0 ↔ midnight-js 4.1.1 / compact-js 2.5.x (see design.md §7)
+* Midnight DApp Connector v4 — Lace and 1AM wallets (Chrome / Brave)
+* Local proof server `midnightntwrk/proof-server:8.1.0` (loopback only, `docker compose up -d`)
+* Offline `signer-tool` (separate repository `signer-tool`): Schnorr/Jubjub keys encrypted with scrypt + AES-256-GCM
+* OpenZeppelin-style multisig pattern
 
----
+## Clean architecture (kept)
+`src/domain` (types) · `src/application` (use-cases, ports) · `src/infrastructure` (midnight-js, wallet, indexer,
+storage, crypto, tooling) · `src/presentation` (UI, hooks, providers, i18n). Dependencies point inward.
 
-## 🎯 Primary Goal
-Implement, polish, and verify the **React 19 / Next.js (App Router)** DApp client in `/home/paul/compact/fungible-token-workspace` to compile, test , sdk-generation, tests, deploy and  interact seamlessly with the deployed **`fungible-token-v2.6.compact`** smart contract on Midnight Preprod. 
+## Roles
+* **Contract Manager** — the account equal to the ledger `owner` (the deployer): deploy/registration, pause/unpause,
+  `emergencyWithdraw`, and may also coordinate multisig operations.
+* **Cosigner** — holds a signer key whose commitment is registered: authorises `mint`, `burn`, `contractWithdraw`,
+  `setEmergencyPauser`, `setThreshold`, `rotateSigner` by signing **offline**.
+* **Standard user** — anyone else: wallet transfers, `deposit`, balance and supply queries.
 
-##  Stack 
-- react 19 / next.js 15+ (App Router)
-- midnight compact client
-- midnight dapp connector
-- Midnight preprod network
-- OpenZeppelin
+## Constraints (unchanged)
+Performance, security, accessibility, SEO, i18n (en/fr), testing, clean architecture, TypeScript; cosigners sign off-chain
+with the signer-tool; transactions and in-progress multisig requests are **persistent**.
 
-## Wallets
-- Lace Wallet chrome extension
-- 1AM Wallet chrome extension
+## Network configuration (`midnight.config.json`)
+| | |
+|---|---|
+| Network ID | `preprod` |
+| Indexer | `https://indexer.preprod.midnight.network/api/v4/graphql` (WS `…/graphql/ws`) |
+| Node RPC | `https://rpc.preprod.midnight.network` |
+| Proof server | `http://127.0.0.1:6300` |
+| Faucet / Explorer | `https://faucet.preprod.midnight.network` · `https://explorer.1am.xyz` |
 
-## Skills
-- React 19 / Next.js 15+ (App Router)- expert
-- Midnight-expert  skills   ( .claude/plugins)                    
-- Midnight-dapp-dev -expert
-- Midnight-deployment-tools -expert
-- Midnight-wallet -expert 
-- Midnight-compact-core -expert 
-- Midnight-node -expert 
-- Midnight-fact-check -expert 
-- Midnight-verify -expert 
-- Midnight-indexer -expert  
-- Midnight.status-code -expert
-- OpenZeppelin multi-sig -expert
-- Midnight-tooling -expert
-
-## Offline-tools
-- Offline signer-tools  
-   
-
-
-## Clean Architecture 
-- Use the Midnight architectural pattern that splits the app into four main folders:
-  - `/infrastructure`: handles low-level infrastructure concerns like Midnight SDK configuration, HTTP client setup, ZK proof provisioning, and dapp connector management.
-  - `/presentation`: contains all the UI components, hooks, and state management logic.
-  - `/application`: implements the business logic and coordinates interactions between infrastructure and presentation layers.
-  - `/domain`: defines the core data structures and types used throughout the application.
-
-# UI Design 
-
-Make sure the UI is user friendly and responsive to different screen sizes.
-use the UI design pattern from midnight-expert dApp dashboard for the UI ( https://github.com/midnightntwrk/midnight-expert ) 
-Use midnight-theme for the UI 
-
-## Relevant Files 
- 
--fungible-token-workspace/contract/fungible_token_v2.6.compact
--fungible-token-workspace/package.json 
--fungible-token-workspace/contract/managed/fungible-token-v2.6/ ( previous compilation output)
--fungible-token-sdk/README.md  ( previous ) ( old sdk gen example)
--fungible-token-sdk/package.json ( previous ) ( old sdk gen example)
--signer-tools/README.md ( previous ) ( old signer tools example)
--signer-tools/package.json ( previous ) ( old signer tools example)
-
-## roles 
-
-- Contract Manager - The account that deployed the contract.
-  • Deployment & Access: Controls how and when smart contract code is pushed to a blockchain network and who holds permissions to run or modify it.
-  • Lifecycle & Versioning: Tracks upgrades and changes to the shared business logic encoded in the contracts as networks evolve.
-  • Auditing & Debugging: Monitors transactions running through the code in real time to trace errors, verify performance, and audit execution history.
-
-- Co signer - The accounts that are cosigners of the deployed contract.
-  • Permissioned Authority: Validates and authorizes sensitive operations—like minting, pausing, unpausing, emergencyWithdraw, adminReallocate, rotateSigner, which cannot be executed by a single party.
-  • Operational Reliability: Maintains continuity by acting as backup or substitute when the primary contract manager is unavailable.
-  • Security & Trust: Provides distributed oversight to prevent unilateral control and enforce shared governance rules.
-
-- Standard User - Any account that is not the Contract Manager or a cosigner.
-  • Transactional Interaction: Executes standard fungible token operations such as transfers, approvals, and balance queries.
-  • Wallet Integration: Connects personal wallets (e.g., Lace, 1AM) to securely sign and broadcast transactions without exposing private keys.
-  • Read-Only Information: Accesses public state data like total supply and individual account balances for transparency and verification.
-
-## Constrainsts 
-
-- The frontend must be built with performance in mind.
-- The frontend must be built with security in mind.
-- The frontend must be built with accessibility in mind.
-- The frontend must be built with SEO in mind.
-- The frontend must be built with internationalization in mind.
-- The frontend must be built with testing in mind.
-- The frontend must use clean architecture.
-- The frontend must use TypeScript.
-- The cosigners must use to sign transactions and ZK proofs off-chain using the offline signer-tools.  
-- Midnight transactions  must be persistent 
-
-
-## Phases 1 - Wallet and Deployment 
-
-1- Implement the connection 
-    - to both Lace and 1AM wallets.
-    - The connection methods must be reusable by other projects 
-    - Add functionallity to disconnect wallet.
-
-2- Implement the compile, test , sdk generation,test sdk,  and deployment interface using midnight.config.json file
-    - Implement the interface to compile the contract.
-    - Implement the interface to generate the sdk.
-    - Implement the interface to generate tests.
-    - Implement the interface to run the tests and show the results.
-    - Implement the interface to deploy the contract.
-
-
-## Phase 2 -  Functions 
-
-3- Implement the UI to interact with the deployed smart contract. UI must be split between the three roles of the users. 
-    - The role of Contract Manager is the account that deployed the contract.
-    - The role of cosigner is the account that is a cosigner of the deployed contract.
-    - The standard user is any account that is not the Contract Manager or a cosigner.
-    -  Each role must have their own set of  functions that they can access.
-
-    - Implement the interface to mint the token.
-    - Implement the interface to transfer the token.
-    - Implement the interface to transferFrom the token.
-    - Implement the interface to approve the allownace
-    - Implement the interface to burn the token.
-    - Implement the interface to pause the contract.
-    - Implement the interface to unpause the contract.
-    - Implement the interface to query the balances of the token for an account.
-    - Implement the interface to query the allowances of the token for an account.
-    - Implement the interface to query the total supply of the token.
-    - Implement the interface to check the approval status of the token for an account.
-    - Implement the interface to setEmergencyPauser.
-    - Implement the interface to  adminReallocate.
-    - Implement the interface to rotateSigner.
-    - Implement the interface to emergencyWithdraw.
- 
-
-Specifically:
-1. Support all contract circuits:
-2. Handle the  complexities of contract authentication pattern (`authenticate(account)`):
-3. Handle the  complexities of preserving Multi-Sig State (OpenZeppelin Pattern)
-4. Support both **Test Mode** (local simulator / mock identities) and **Wallet Mode** (live on-chain using **Lace and 1AM Wallets**).
+## Relevant files
+`contract/fungible_token_native_v3.compact` · `contract/tools/signer-tools.compact` · `contract/managed/` (build output) ·
+`midnight.config.json` · `sdk/fungible-token-native-v3/` (generated) · `tests/` · `scripts/` (compile, deploy-cost,
+check-contract, verify-manager-key) · `docker-compose.yml` · `.github/workflows/ci.yml`
 
 ---
 
-## ⚙️ Network  Configuration
+## Implementation roadmap
 
-- **Network ID**: `preprod`
-- **Indexer GraphQL Endpoint**: `https://indexer.preprod.midnight.network/api/v4/graphql`
-- **Indexer WebSocket Endpoint**: `wss://indexer.preprod.midnight.network/api/v4/graphql/ws`
-- **Node RPC Endpoint**: `https://rpc.preprod.midnight.network`
-- **Proof Server Endpoint**: `http://127.0.0.1:6300`
-- **Faucet Endpoint**: `https://faucet.preprod.midnight.network`
-- **Block Explorer**: `https://explorer.1am.xyz`
+### Phase 1 — Wallet and deployment ✅
+- [x] Reusable wallet connector for **Lace and 1AM** (detect, connect with timeouts, status, **disconnect**)
+- [x] Build & Deploy tab driven by `midnight.config.json`: compile → generate SDK → generate tests → run tests → deploy
+- [x] Toolchain pin (0.31.1) with `scripts/compile.mjs` compat step
+- [x] **Staged deploy** (4 circuits in the deploy tx, the rest by maintenance transactions) with resume from chain state
+- [x] Deploy/registration progress panel; authority key export/import
+- [x] Midnight theme, responsive layout
 
----
+### Phase 2 — Contract operations and roles ✅
+- [x] Role resolution and role-specific UI (manager / cosigner / user)
+- [x] All circuits: `mint`, `burn`, `contractWithdraw`, `deposit`, `pause`, `unpause`, `emergencyWithdraw`,
+      `setEmergencyPauser`, `setThreshold`, `rotateSigner`
+- [x] **Native-token migration (v2.6 → v3):** wallets transfer natively; contract keeps issuance and its own holdings
+- [x] Offline multisig flow: request → signer-tool approvals → in-app re-verification → submit (2-of-3 verified on-chain)
+- [x] **Test Mode** (simulator, mock identities, replayed persistence) and **Wallet Mode**
+- [x] Step-by-step progress for every action, including multisig operations
+- [x] Persistent transaction history, multisig drafts, and **history backfill** from the indexer
+- [x] Balances from the indexer (wallet UTXO replay) and ledger state (contract-held); **Lost tokens** card
 
-## 📋 Step-by-Step Implementation Roadmap
+### Phase 3 — Hardening ✅
+- [x] **Schnorr challenge-reduction forgery** found, fixed (`Uint<8>`, `q <= 115`) and regression-tested
+- [x] Stale/forgery-vulnerable contracts refused on open (verifier-key comparison, `CONTRACT_VERSION`)
+- [x] Contract-address recipient refused on-chain and in the UI (live warning)
+- [x] Content-Security-Policy; loopback-only tooling API; local-only proof server
+- [x] Encrypted key backup/restore (scrypt + AES-256-GCM), import safeguards, replaced-key retention
+- [x] `check-contract` and `verify-manager-key` scripts
 
-1- Implement the phase 1 
-- UI plolish ( -midnight-theme ) 
-- Make the UI be , user friendly  and responsive to different screen sizes  
-- Midnight tooling (midnight-sdk , midnight-runtime , midnight-dapp-connector , midnight-wallet ) 
-- Verify the test suite with `npm test` and production build with `npm run build`
+### Phase 4 — Publication ✅
+- [x] Repositories on GitHub: `fungible-token-workspace` (v3), `fungible-token-workspace-v2.6` (legacy), `signer-tool`
+- [x] LICENSE, SECURITY.md, README quick start, pinned `docker-compose.yml`, CI (type-check + tests)
+- [x] Secret scanning + push protection (enabled by the owner)
+- [x] `design.md`, this plan
 
-2- Implement the phase 2 
+### Phase 5 — Remaining work (next steps, in suggested order)
+1. **Repository settings (owner):** Dependabot, branch protection on `main` with the CI check required, private
+   vulnerability reporting.
+2. **Quality gates:** add an ESLint config (`next lint` is not configured) and a formatter; keep `npm test` + type-check in CI.
+3. **Docs sync:** rewrite `staged_deployment.md` for v3 (10 circuits; `mint, deposit, pause, unpause` first, 6
+   registrations after) and drop the "(in progress)" label in the README's v3 heading.
+4. **Browser E2E tests:** Playwright against Test Mode (and a mocked DApp Connector for Wallet Mode flows).
+5. **Accessibility and SEO audit** with real tools (axe, Lighthouse); fix findings.
+6. **Scalability of reads:** cache/incrementally update the indexer UTXO replay (it re-reads a wallet's full history on
+   every refresh) and paginate/cached history sync for contracts with many actions.
+7. **Multi-contract support:** keep a list of known contracts and switch between them (today: one saved pointer).
+8. **Nonce-based CSP** (remove `'unsafe-inline'` scripts) once dynamic rendering is acceptable.
 
-    
+## Still-missing features
+
+**Contract / governance**
+* No **authority handover or timelock**: whoever holds the maintenance key can replace verifier keys (trust point,
+  decided out of scope; documented).
+* **Treasury is fixed** at deploy (no `setTreasury`); signer count is fixed at 3 (no add/remove, only rotate).
+* **Single-key owner powers:** the owner alone can pause and `emergencyWithdraw` contract-held tokens to the treasury.
+  Options: require multisig for `emergencyWithdraw`, or a pause timelock.
+* No per-period **mint caps / rate limits**, no batch mint, no pause granularity per circuit.
+* No on-chain **token metadata registry**: wallets may show the raw token color rather than the name/symbol.
+* v2.6 features intentionally dropped by the native model: `approve` / `transferFrom` allowances, account-based `burn`,
+  `adminReallocate`.
+
+**Key management**
+* Identity and authority keys are stored **unencrypted** in browser storage (encrypted *backup* exists; encryption at
+  rest, passphrase-gated unlock, or hardware/wallet-held keys do not).
+* No in-app cosigner **key generation or signing** (signing stays offline by design; a guided desktop/CLI wrapper or QR
+  exchange of request/approval files would ease coordination).
+
+**App**
+* Coordinator experience: request/approval exchange is file or paste based (no share link/QR, no inbox of pending
+  requests from other coordinators).
+* Chain-synced history rows show the circuit, block and hash but not the operation arguments (recipient, amount).
+* Wallet-to-wallet transfers are not part of the contract's history (they do not touch the contract).
+* Only English and French; no automated accessibility/performance budget.
+
+**Platform / ecosystem**
+* **Mainnet readiness:** third-party audit, network switching beyond preprod, production hosting guidance (the app is
+  designed to run locally because proofs need the user's own prover).
+* **Toolchain upgrade** to the async runtime (compiler ≥ 0.34, compact-runtime ≥ 0.19) once midnight-js supports it.
+* Parity for the legacy v2.6 repository (CSP, CI, compose) is deliberately not planned — it carries a warning instead.
