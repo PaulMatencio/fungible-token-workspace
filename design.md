@@ -2,7 +2,7 @@
 
 Design notes for the v3 contract and its Next.js client. For setup and commands see [README.md](README.md); for the
 security policy see [SECURITY.md](SECURITY.md); for the staged-deploy background see
-[staged_deployment.md](staged_deployment.md) (written for v2.6, the mechanism is unchanged).
+[staged_deployment.md](staged_deployment.md).
 
 ## 1. Goals and scope
 

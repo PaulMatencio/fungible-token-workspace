@@ -81,20 +81,18 @@ check-contract, verify-manager-key) · `docker-compose.yml` · `.github/workflow
 - [x] Repositories on GitHub: `fungible-token-workspace` (v3), `fungible-token-workspace-v2.6` (legacy), `signer-tool`
 - [x] LICENSE, SECURITY.md, README quick start, pinned `docker-compose.yml`, CI (type-check + tests)
 - [x] Secret scanning + push protection (enabled by the owner)
-- [x] `design.md`, this plan
+- [x] `design.md`, this plan, `staged_deployment.md` (rewritten for v3)
 
 ### Phase 5 — Remaining work (next steps, in suggested order)
 1. **Repository settings (owner):** Dependabot, branch protection on `main` with the CI check required, private
    vulnerability reporting.
 2. **Quality gates:** add an ESLint config (`next lint` is not configured) and a formatter; keep `npm test` + type-check in CI.
-3. **Docs sync:** rewrite `staged_deployment.md` for v3 (10 circuits; `mint, deposit, pause, unpause` first, 6
-   registrations after) and drop the "(in progress)" label in the README's v3 heading.
-4. **Browser E2E tests:** Playwright against Test Mode (and a mocked DApp Connector for Wallet Mode flows).
-5. **Accessibility and SEO audit** with real tools (axe, Lighthouse); fix findings.
-6. **Scalability of reads:** cache/incrementally update the indexer UTXO replay (it re-reads a wallet's full history on
+3. **Browser E2E tests:** Playwright against Test Mode (and a mocked DApp Connector for Wallet Mode flows).
+4. **Accessibility and SEO audit** with real tools (axe, Lighthouse); fix findings.
+5. **Scalability of reads:** cache/incrementally update the indexer UTXO replay (it re-reads a wallet's full history on
    every refresh) and paginate/cached history sync for contracts with many actions.
-7. **Multi-contract support:** keep a list of known contracts and switch between them (today: one saved pointer).
-8. **Nonce-based CSP** (remove `'unsafe-inline'` scripts) once dynamic rendering is acceptable.
+6. **Multi-contract support:** keep a list of known contracts and switch between them (today: one saved pointer).
+7. **Nonce-based CSP** (remove `'unsafe-inline'` scripts) once dynamic rendering is acceptable.
 
 ## Still-missing features
 

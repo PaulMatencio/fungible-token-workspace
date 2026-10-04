@@ -75,7 +75,7 @@ button on the Overview tab resumes it. `npm run deploy:cost [-- --circuits a,b]`
 - **`setThreshold` is deferred** to a future contract version (the threshold stays fixed after deploy). If added later it must be
   multisig-gated like `mint`, then registered through the existing "Register remaining circuits" flow.
 
-## v3 — native unshielded token (in progress)
+## v3 — native unshielded token
 `contract/fungible_token_native_v3.compact` (compile: `node scripts/compile.mjs native`, output `contract/managed/fungible-token-native-v3`).
 - The token is a **native Midnight unshielded token**; wallets hold and transfer it themselves (wallet → wallet needs no circuit).
 - Circuits: `mint` (multisig → wallet address), `burn` (multisig, contract-held tokens only), `deposit` (anyone: wallet → contract-held),
