@@ -12,6 +12,23 @@ src/presentation    React UI, providers, i18n (en/fr)
 src/app             routes: /, /api/tooling, /zk/[...path]
 ```
 
+## Quick start (preprod, Wallet Mode)
+Prerequisites: Node 22, Docker, the Compact compiler **0.31.1** (`compact update 0.31.1`), and a Midnight wallet
+(Lace or 1AM) on preprod with tDUST.
+
+```bash
+git clone git@github.com:PaulMatencio/fungible-token-workspace.git && cd fungible-token-workspace
+npm ci
+npm run proof-server:start     # local prover on 127.0.0.1:6300 — keep it local (see SECURITY.md)
+npm run compile:contract       # builds the circuits and the proving keys (*.prover are not committed)
+npm run dev                    # http://localhost:3000 → connect the wallet → Build & Deploy
+```
+
+Run the app **locally** rather than hosting it publicly: proofs must come from your own prover (proof requests include
+your secret key), and `/api/tooling` spawns local processes. `npm run check:contract -- <address>` inspects a deployed
+contract; `npm run verify:manager-key -- <address>` checks that a secret key is a contract's manager. Report security
+issues privately — see [SECURITY.md](SECURITY.md).
+
 ## Commands
 | | |
 |---|---|
@@ -26,7 +43,7 @@ processes, so they are loopback + same-origin only and disabled in production un
 
 ## Modes
 - **Test Mode**: compiled circuits run locally through `compact-runtime` with mock identities (manager, Alice, Bob, 3 cosigners). State persists across reloads by replaying recorded calls.
-- **Wallet Mode**: Lace / 1AM via the DApp Connector; proofs from the local proof server (`127.0.0.1:6300`); the wallet balances and submits. Start it with `npm run proof-server:start` (needs a `docker-compose.yml`, not included).
+- **Wallet Mode**: Lace / 1AM via the DApp Connector; proofs from the local proof server (`127.0.0.1:6300`); the wallet balances and submits. Start it with `npm run proof-server:start` (uses the committed `docker-compose.yml`, pinned to `midnightntwrk/proof-server:8.1.0` and bound to loopback only).
 
 ## Roles
 Manager = account equal to ledger `owner`; Cosigner = holds a signer key whose commitment is registered; else Standard user.
