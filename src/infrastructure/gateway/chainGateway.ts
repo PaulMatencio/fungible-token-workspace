@@ -261,7 +261,12 @@ export class ChainGateway implements TokenGateway {
   /** Every deploy / maintenance / call of this contract as recorded by the indexer, as history rows. */
   async chainHistory(): Promise<TxLogEntry[]> {
     const cfg = await this.wallet.api.getConfiguration();
-    const actions = await fetchContractHistory(cfg.indexerWsUri, this.contractAddress);
+    let actions;
+    try {
+      actions = await fetchContractHistory(cfg.indexerWsUri, this.contractAddress);
+    } catch (e) {
+      throw new AppError('CONTRACT_REJECTED', `Could not read the contract history from the indexer (${cfg.indexerWsUri}): ${describeError(e)}`, { cause: e });
+    }
     return actions.map((a) => ({
       id: `${a.txHash}:${a.circuit}`,
       contractAddress: this.contractAddress,

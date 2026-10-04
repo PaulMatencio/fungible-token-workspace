@@ -24,7 +24,7 @@ export interface ChainAction {
 }
 
 const IDLE_MS = 1500;
-const FIRST_EVENT_MS = 5000;
+const FIRST_EVENT_MS = 15_000; // slow connections / browser shields can delay the first event
 
 export function fetchContractHistory(wsUrl: string, address: string, timeoutMs = 30_000): Promise<ChainAction[]> {
   const out: ChainAction[] = [];

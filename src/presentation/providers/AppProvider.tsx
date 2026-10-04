@@ -323,19 +323,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const run = async () => {
         const known = new Set((await txLog.list(gw.contractAddress)).map((e) => e.txHash).filter(Boolean));
         let added = 0;
-        for (const e of await gw.chainHistory!()) {
+        const onChain = await gw.chainHistory!();
+        for (const e of onChain) {
           if (known.has(e.txHash)) continue;
           known.add(e.txHash);
           await txLog.add(e);
           added += 1;
         }
         setTxs(await txLog.list(gw.contractAddress));
-        return added;
+        return { added, onChain: onChain.length };
       };
       if (quiet) {
         await run().catch((e) => console.warn('[history] chain sync failed', e));
       } else {
-        await guard(async () => { await run(); }, 'History synced from the chain');
+        const r = await guard(run);
+        if (r) {
+          setNotice(`History synced from the chain: ${r.onChain} on-chain action(s), ${r.added} new.${r.onChain === 0 ? ' The indexer returned no actions for this contract — check the network and the contract address.' : ''}`);
+        }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
